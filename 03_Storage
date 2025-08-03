@@ -1,0 +1,80 @@
+#!/usr/bin/bash
+
+# 1.) Determine if USER STORAGE DIRS (US_DIRS) are defined
+#     HOME, WORK, SCRATCH are critical, not defined is failure
+# 2.) Check Minimum Permissions (dwrx)
+# 3.) Write test
+
+## WRITE/READ test
+
+##TODO  STOCKYARD on all sys (including vista stockyard=work)
+##TODO  What about aptainer and singularity
+
+space10='          '
+STATUS=0
+
+host_name=`hostname -A`
+for sys in frontera vista stampede ls6; do
+  [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
+done
+TACC_SYS=stampede
+
+if [[ $AT_TACC == yes ]]; then
+   USER_STORAGE_DIRS=( HOME  SCRATCH WORK  STOCKYARD )
+  USER_STORAGE_PERMS=( drwx  drwx    drwxr drwx     )
+  CRITICAL_STORAGE_DIRS=( HOME )
+
+ #echo "STORAGE Environment Variable Definition & Directory Perms." 
+  echo "STORAGE ENV VARS & PERMS"
+  tab=$space10
+
+  # Determine if variables are defined
+  for i in ${!USER_STORAGE_DIRS[@]}; do
+      user_dir=${USER_STORAGE_DIRS[$i]}
+      if [[ ! -z ${!user_dir} ]]; then
+         printf "%s %-9s Variable  is defined.\n" "$tab" $user_dir
+         found_pathnames+=(${!user_dir})
+         found_storage_dirs+=($user_dir)
+         found_storage_perms+=(${USER_STORAGE_PERMS[@]})
+      else
+         printf "%s %-9s Variable NOT defined.\n" "$tab" $user_dir
+        #[[ $STATUS != 1 ]] && STATUS=3  #  retain critical status
+        #[[ ${CRITICAL_STORAGE_DIRS[@]} =~ $user_dir ]] && STATUS=1
+         STATUS=1
+      fi  
+  done
+
+  if [[ ${#found_storage_dirs[@]} == 0 ]]; then
+    echo "$tab None of the following User Storage Variables are defined:"
+    echo "$tab    (${USER_STORAGE_DIRS[@]})."
+    STATUS=1  #redundant, JIC some directories become only warnings in future
+  fi
+
+  # Check USER permission of directories for which variables are defined.
+  if [[ ${#found_storage_dirs[@]} -gt 0 ]]; then
+    for i in ${!found_storage_dirs[@]}; do
+       user_dir=${found_storage_dirs[$i]}
+       stat_perm=`stat -c %A ${found_pathnames[$i]}`
+       status=$? 
+       if [[ $stat_perm =~ ^${found_storage_perms[$i]} ]]; then
+          printf "%s %-9s directory USER permissions are valid (%s)..\n" \
+                 "$tab" $user_dir ${found_storage_perms[$i]}
+       else
+          printf "%s %-9s directory USER permissions (%s) NOT valid (required: %s).\n" \
+                 "$tab" $user_dir $stat_perm ${found_storage_perms[$i]}
+          STATUS=1
+      fi  
+    done
+  
+  fi
+
+  # test writing/reading from USER directories (that mount is correct)
+  if [[ ${#found_storage_dirs[@]} -gt 0 ]]; then
+    for i in ${!found_storage_dirs[@]}; do
+       user_dir=${found_storage_dirs[$i]}
+    done
+
+  fi
+fi
+
+  exit $STATUS

@@ -1,0 +1,66 @@
+#!/bin/bash
+# Check if module executable/function is available.
+# If @TACC Check if TACC module is loaded.
+# If @TACC Check if a default compiler system  is available.
+#                                 2025-08-01 Kent Milfeld
+# TODO If @TACC Check if a default MPI      library is available.
+# 
+# TODO 1.) Determine module type
+# TODO 2.) what about csh (alias module)
+# TODO 2.) means identifying login shell
+
+space10='          '
+
+  host_name=`hostname -A`
+  for sys in frontera vista stampede ls6; do
+    [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
+  done
+
+  if [[ $AT_TACC == yes ]]; then
+    TACC_compiler_families=( nvidia intel oneAPI llvm gcc )
+  fi
+
+  echo "MODULES Access and Loads"
+  tab=$space10
+
+
+  output=`type module`
+  if [[ $? == 0 ]]; then
+     cmd=executable
+     [[ $output =~ "module is a function" ]] && cmd=function
+     echo "$tab module $cmd found."
+  else
+     echo " No path/type for module command found."
+     echo " Check to make system initialization is defining the module function."
+     exit 1
+  fi
+
+  if [[ $AT_TACC == yes ]]; then
+    output=`ml is-loaded TACC`
+    if [[ $? == 0 ]]; then
+      printf "%s %-7s module is loaded.\n" "$tab" "TACC"
+    else
+      echo "$tab TACC module is NOT loaded-- a requirement for TACC environments."
+      exit 1
+    fi
+  
+    output=$(module describe 2>&1)
+    for comp in ${TACC_compiler_families[@]}; do   #( nvidia intel oneAPI llvm gcc)
+      reg="\\b${comp}\\b"
+      [[ $output =~ $reg  ]] &&  compilers+=($comp) #&& echo FOUND $comp -- ${compilers[@]}
+    done
+  
+    [[ ${#compilers[@]} ==  1 ]] && printf "%s %-7s module is the system default compiler system.\n" \
+                                    "$tab" ${compilers[0]}
+    [[ ${#compilers[@]} ==  0 ]] && echo "$tab No default compiler system found." &&  exit 1
+    [[ ${#compilers[@]} -gt 1 ]] && echo "$tab More than 1 compiler system found in default module." && 
+                                    echo "$tab Only a single compiler system can be accessible in a module env." &&
+                                    exit 1
+  fi
+  
+  exit 0
+
+#  TACC_compiler_families=( nvidia intel oneAPI llvm gcc)
+#vista $ ml describe
+#Collection "default" contains: 
+#   1) nvidia    2) nvpl    3) ucc    4) ucx    5) openmpi    6) cmake    7) xalt    8) TACC

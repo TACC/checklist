@@ -1,0 +1,84 @@
+#!/bin/bash
+
+space='          ' 
+
+host_name=`hostname -A`
+for sys in frontera vista stampede ls6; do
+  [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
+done
+
+                  #milfeld:*:1117:825112:milfeld:/home1/00770/milfeld:/bin/bash
+user_info=`getent passwd $USER`
+IFS=":" read -ra usr_etc_pwd <<< "$user_info"  # put fields in /usr_etc_pwd array
+
+user=${usr_etc_pwd[0]}
+ uid=${usr_etc_pwd[2]}
+ gid=${usr_etc_pwd[3]}
+home=${usr_etc_pwd[5]}
+login_shell=${usr_etc_pwd[6]}
+
+if [[ $AT_TACC == yes ]]; then
+  TACC_ACC_DIR="/usr/local/etc/"
+  [[ $sys == ls4 ]] && TACC_ACC_DIR=/sge_common/default/acct/map/
+         proj_map=$TACC_ACC_DIR/project.map
+     projuser_map=$TACC_ACC_DIR/projectuser.map
+  projbalance_map=$TACC_ACC_DIR/projectbalance.map
+        usage_map=$TACC_ACC_DIR/usage.map
+
+  projects=( $(grep -E "^${user}\\b" $projuser_map) ) #projuser_map
+  status=$?
+  projects=("${projects[@]:1}")  #remove 1st element, user name
+  if [[ $status == 0 ]]; then
+    echo "PROJECTS found (IDs ${projects[@]}, repectively): "
+  else
+    echo "No Projects found for user $user."
+    exit 1
+  fi
+
+  valid_count=0 expired_count=0
+  for proj_id in ${projects[@]}; do
+    name_id=( $(grep -E " $proj_id\\b" $proj_map) )  #$proj_map
+    proj_name=${name_id[0]}
+
+    
+    usage_line=( $(grep -E "^$proj_name:" $usage_map) )  #$usage_map
+    IFS=":" read -ra usage <<< "$usage_line"
+    start_date=${usage[2]}
+      end_date=${usage[3]}
+      allocate=${usage[4]}
+          used=${usage[5]}
+       balance=${usage[6]}
+
+    if [[ ${#usage[@]} -ne 7 ]]; then
+        echo -e "  WARNING: invalid account line for $proj_name:\n" \
+                "          $usage_line"
+                  #MCB22024:Vista:2022-04-26:2027-01-31:10000:3.496:9996.504
+    else
+      valid_count=$(( valid_count + 1 ))
+      today=`date +%F`
+      today_no=$(awk -F'-' '{printf("%4d%02d%02d\n",$1,$2,$3)}' <<< `date +%F`)
+        end_no=$(awk -F'-' '{printf("%4d%02d%02d\n",$1,$2,$3)}' <<< $end_date)
+
+      if [[ $today_no -gt $end_no ]]; then
+        expired_count=$(( expired_count + 1 ))
+        echo -e "  EXPIRED: Project $proj_name has expired ($end_date)\n"
+      else
+        printf  "%s ACTIVE : %8s (SUs Alloc:Used:Bal Exp) %8s %8.0f %8.0f %s \n" \
+                 "$space" "$proj_name" "${allocate}" "${used}" "${balance}" "$end_date"
+     fi
+    
+    fi
+  
+  done
+
+  if [[ $valid_count -gt 0 ]]; then 
+    if [[ $expired_count -eq $valid_count ]]; then
+      echo -e " FAIL: All valid projects are expired.\n"   #FAILURE
+      exit 1
+    fi
+    [[ $expired_count -gt 0 ]] && exit 3                    #WARNING
+  fi
+
+  exit 0
+
+fi

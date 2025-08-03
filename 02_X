@@ -1,0 +1,5 @@
+#!/bin/bash
+
+printf "   %s\n"  "whatever X"
+
+exit 1

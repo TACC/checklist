@@ -1,0 +1,162 @@
+#!/bin/bash
+space10='          '  tab=""
+host_name=`hostname -A`
+
+for sys in ls6 frontera stampede3 vista; do
+  [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
+done
+
+if [[ $AT_TACC == yes ]]; then
+  [[ $TACC_SYS == frontera ]] && filesystems=(/home1 /work) && FS=LUSTRE
+  [[ $TACC_SYS == ls6      ]] && filesystems=(/home1 /work) && FS=LUSTRE
+  [[ $TACC_SYS == vista    ]] && filesystems=(/home1 /work) && FS=VISTA
+fi
+
+OS=`uname`
+output=`df --version >/dev/null 2>&1`; status=$?
+if [[ $OS == Linux ]]; then
+  df_opts=-BG          # On Centos/Rocky
+elif [[ $OS == Darwin ]]; then
+  df_opts=-g           # On MacOS
+else
+  echo " ERROR (internal): Don't know OS for df command.  Bailing"
+  exit 1
+fi
+
+#Check use of local files systems
+local_disks=(/tmp)
+if [[ $OS == Darwin ]]; then                #Uses a single df for space and inode
+
+  for file_sys in ${local_disks[@]}; do
+    df_flds=(`df $df_opts $file_sys | tail -n 1`)
+  
+    space_used_no=${df_flds[4]%\%}
+    inode_used_no=${df_flds[7]%\%}
+  
+    [[ $((100-space_used_no)) -lt 11 ]] || [[ $((100-inode_used_no)) -lt 11 ]] &&
+    echo "$tab WARNING: space or inode availability low on $file_sys" 
+  
+    printf "%s %-8s [SPACE: %4s%% available of %4sGB]  [INODES: %4s%% free (%7s)]\n" \
+         "$tab" \
+         $file_sys $((100-space_used_no)) ${df_flds[1]} \
+                   $((100-inode_used_no)) ${df_flds[6]}
+  tab=$space10
+  done
+
+elif [[ $OS == Linux ]]; then                       # requires executing 2 df's: space and inodes
+  echo "STORAGE QUOTAS"
+
+  for file_sys in ${local_disks[@]}; do
+    df_space_flds=(`df    $df_opts $file_sys | tail -n 1`)
+    df_inode_flds=(`df -i $df_opts $file_sys | tail -n 1`)
+  
+    space_used_no=${df_space_flds[4]%\%} 
+    inode_used_no=${df_inode_flds[4]%\%}
+  
+    [[ $((100-space_used_no)) -lt 11 ]] || [[ $((100-inode_used_no)) -lt 11 ]] &&
+    echo "$tab WARNING: space or inode availability low on $file_sys" 
+  
+#   printf "%-8s [SPACE: %4s%% available of %4sGB]  [INODES: %4s%% free (%7s)]\n" \
+    printf "%s %-8s [SPACE: %4s%% available of %4s]  [INODES: %4s%% free (%7s)]\n" \
+           "$tab" \
+           $file_sys $((100-space_used_no)) ${df_space_flds[1]} \
+                     $((100-inode_used_no)) ${df_inode_flds[1]}
+  done
+  tab=$space10
+fi
+
+if [[ $AT_TACC == yes ]]; then
+  tab=$space10
+  for fs in ${filesystems[@]}; do
+     if [[ $TACC_SYS == vista ]]; then
+        if [[ $fs =~ work ]]; then
+          common_out=(`lfs quota   -u $USER  $fs | sed -n '3p'`)
+          [[ ${common_out[4]} == "-" ]] && common_out[4]=0     #make grace 0 if "-"
+          [[ ${common_out[8]} == "-" ]] && common_out[8]=0
+
+          common_out[1]=`echo $(echo "scale=2; ${common_out[1]}/1048576"  | bc -l)` #kbytes to gbytes
+          common_out[2]=`echo $(echo "scale=2; ${common_out[2]}/1048576"  | bc -l)`
+          common_out[3]=`echo $(echo "scale=2; ${common_out[3]}/1048576"  | bc -l)`
+          percent_used_space=`echo $(echo "scale=2; 100*${common_out[1]}/${common_out[3]}"  | bc -l)`
+          percent_used_inode=`echo $(echo "scale=2; 100*${common_out[5]}/${common_out[7]}"  | bc -l)`
+
+          # Report at login:
+          # Disk         Usage (GB)     Limit    %Used   File Usage       Limit   %Used |
+          # /scratch         1657.0       0.0     0.00      7120972           0    0.00 |
+          #Vista $ lfs quota   -u $USER  /work | sed -n '3p'
+          #/work 450798756       0 1073741824       - 2999996       0 3000000       -
+
+          echo "$tab Disk         Usage (GB)     Limit    %Used   File Count      Limit  %Used "
+          printf  "%s %-13s %9s %9s %8s %12s %10s %6s\n" \
+                  "$tab" \
+                   ${common_out[0]} \
+                   ${common_out[1]} ${common_out[3]} $percent_used_space \
+                   ${common_out[5]} ${common_out[7]} $percent_used_inode
+        else
+          out=`quota -s -w -f $fs`
+                      # filesys   used      quota     limit grace used      quota     limit grace
+          common_out=(${out[0]} ${out[1]} ${out[2]} ${out[3]} 0 ${out[4]} ${out[5]} ${out[7]} 0)
+        fi
+     fi
+   # echo $fs
+  done
+fi
+#Disk quotas for user milfeld (uid 1117): 
+#     Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
+#192.168.16.21:/vista/home1 23126004       0 24414060          282610       0  500000        
+#Disk quotas for usr milfeld (uid 1117):
+#     Filesystem  kbytes   quota   limit   grace   files   quota   limit   grace
+#          /work 450798756       0 1073741824       - 2999996       0 3000000       -
+#
+
+# df INFO from LINUS
+#$ df  -BG /tmp   #vistat
+#Filesystem                  1G-blocks  Used Available Use% Mounted on
+#/dev/mapper/rootvg01-lv_tmp      286G    3G      283G   1% /tmp
+#$  df -i -BG /tmp
+#Filesystem                     Inodes IUsed     IFree IUse% Mounted on
+#/dev/mapper/rootvg01-lv_tmp 149704704 13790 149690914    1% /tmp
+
+#exit 0
+
+
+#  space_used_MB=${limits[0]}
+# space_limit_MB=${limits[2]}
+#  inode_used=${limits[3]}
+# inode_limit=${limits[5]}
+# 
+# if [[ $space_limit_MB -gt 0.00 ]]; then
+#   if [[ $space_used_MB/$space_limit_MB -gt 0.95 ]]; then
+#     echo " Space used in $FS is above 95%."
+#   else
+#     echo "  ${percent}% of $percent of  12345 MB in $FS (limit: $ 
+#     #   At 90% of $FS quota (17GB used, 240GB available)
+#     #   At 90% of $FS user quota (17/240 GB used/avail)
+#   fi
+# else
+#   echo " No space limit on $FS."
+#   exit 0
+# fi
+
+     
+# v====== TACC COMMENTS ======v
+
+# Vista $ quota -f /scratch
+#Disk quotas for user milfeld (uid 1117): 
+#     Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
+#192.168.16.21:/vista/scratch
+#                1737490432       0 9765624217600         7120972       0       0   
+
+#Vistat $ quota -f /home1
+#Disk quotas for user milfeld (uid 1117): 
+#    Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
+#192.168.16.21:/vista/home1
+#                23125632       0 24414060          282526       0  500000     
+
+# Vistat Login Disk information
+#------------------------ Disk quotas for user milfeld -------------------------
+#| Disk         Usage (GB)     Limit    %Used   File Usage       Limit   %Used |
+#| /scratch         1657.0       0.0     0.00      7120972           0    0.00 |
+#| /home1*            22.1      23.3    94.72       282526      500000   56.51 |
+#| /work*            429.9    1024.0    41.98      2999996     3000000  100.00 |
+#-------------------------------------------------------------------------------

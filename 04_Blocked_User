@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# @TACC searches tacc_filter_options for blocked $USER.
+# If found print failure, and message if it exists.
+# See example of blocked_user line and message.
+# non-TACC sites need to interact with their ACL mechanism.
+# Based on Sanitytool's sanitycheck. Written and revised. 
+#                                   2025-08-01 Kent Milfeld
+
+#TODO Search for message within range of queue_acls/public
+
+space='          ' 
+STATUS=0
+
+host_name=`hostname -A`
+for sys in frontera vista stampede ls6; do
+  [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
+done
+
+if [[ $AT_TACC == yes ]]; then
+  ACL_DIR=/etc/slurm
+  filter_path=$ACL_DIR/tacc_filter_options
+  
+  # Get the beginning and end (next ^[tacc_filter sentinel) 
+  # of the tacc-file/queue_acls/public section
+  begin_ln=`grep -n '\[tacc_filter/queue_acls/public\]' $filter_path | sed 's/:.*//'`
+  all_ln_nos=(`grep -n '^\[tacc_filter' $filter_path | sed 's/:.*//'` )
+  for i in ${all_ln_nos[@]}; do
+    [[ $i -gt $begin_ln ]] && end_ln=$i && break
+  done
+
+  # if "ALL =" line continue, else warning.  For TEST set USER to blocked user here.
+  sed -n "$begin_ln,$end_ln p" $filter_path | grep -E '^\s*ALL\s*=' >/dev/null 2>&1
+  if [[ ${PIPESTATUS[1]} == 0 ]]; then
+
+    ACL_LINE=`sed -n "$begin_ln,$end_ln p" $filter_path | grep -E '^\s*ALL\s*='`
+    tmp1=${ACL_LINE#*\'}  # remove all up to and include single quote
+    tmp2=${tmp1%\'*}        # remove final quote and everything after
+    blocked_list=(${tmp2//\!/})        # remove exclamation characters
+
+    reg="\\b$USER\\b"
+    if [[ "${blocked_list[@]}" =~ $reg ]]; then
+
+      reg="^#*\s*\\b$USER\\b"  # Begins with one or more (OoM) "#"'s, OoM white spaces and boundary $USER boundry
+      message=`grep -E $reg $filter_path`
+      status=$?
+
+      [[ $status != 0 ]] && message="No message (reason) for blocking was included in the filter."
+      echo "$space $message"
+      exit 1
+
+    else
+      echo "QUEUES $USER has access to all queues (searched $filter_path)."
+    fi 
+  else
+    echo " NO \"ALL =\" line found in public queue acls."
+    echo "$space Even if no user found, root is usually blocked."
+    echo "$space If job submission work, don't consider this a problem."
+    STATUS=3
+  fi
+fi
+exit $STATUS
+
+# blocked sample  !! means has message
+ALL = '!root !!davidcho !!dkim5'
+# message sample
+# kent, DISABLED, 2024-10-04, user's OSU benchmarks hiccuped the IB fabric and left 80 nodes drained with IB err    ors via jobs 48351-48353.  <JED>

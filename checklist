@@ -1,0 +1,799 @@
+#!/bin/bash
+# Checklist is a rename and rewrite the python sanitycheck tool "at TACC".
+# It "checks" the same user environment components, but is a complete rewrite 
+# in the BASH shell scripting language, performing checks in different ways
+# and reporting is somewhat different.
+# Nevertheless, it is versioned 4.0 in recognition of the previous work.
+
+# One important design concept of 4.0 is that
+# it simplifies how to include your own scripts for checking.
+# Written by Kent Milfeld
+# 
+# END COMMENTS -- Do Not Remove, Alter or Duplicate
+
+#     ---------- checklist shell functions ----------
+
+# === 01_SSH ===
+01_SSH(){
+# 1.) Check permission on ~/.ssh directory
+# 2.) Check permission on ~/.ssh/*_id.pub 
+# 3.) Check permission on ~/.ssh/*_id
+# 4.) Check permission on ~/.ssh/authorized_keys
+# 5.) Make sure *_id.pub is in authorized_keys
+
+#TODO What if multiple keys?
+#TODO Exist later if 0 keys found (check directory permissions
+#TODO Exist later if OK with multiple keys
+#                                 2025-08-01 Kent Milfeld
+l_space='          '
+
+i=0
+pub_key_files=( id_ed25519.pub id_rsa.pub )
+
+output=`ls $HOME/.ssh/*.pub`
+if [[ $? != 0 ]]; then
+  echo " Could not find any public key (of form \*pub)."
+  exit 1
+else   #determine key type
+  for file in ${pub_key_files[@]}; do
+    if [[ $output =~ $file  ]]; then
+       pub_keys+=($file)
+    fi
+  done
+fi
+ [[ ${#pub_keys[@]}  == 1 ]] && echo "Found public  key ${pub_keys[0]}" && pub_key=${pub_keys[0]}
+ [[ ${#pub_keys[@]}  == 0 ]] && echo " Found NO public key (searched: ${pub_key_files[@]})" && exit 1
+#[[ ${#pub_keys[@]} -gt 1 ]] && echo " Found Multiple public key ${pub_keys[@]}." && exit 1
+
+ pub_key=${pub_keys[0]}
+priv_key=${pub_key%%.pub}
+
+output=`ls $HOME/.ssh/$priv_key`
+if [[ $? == 0 ]]; then
+  echo "$l_space Found private key $priv_key"
+else
+  echo "$l_space Could NOT find private key $priv_key."; exit 1
+fi
+
+pathnames=( $HOME/.ssh $HOME/.ssh/$priv_key $HOME/.ssh/$pub_key $HOME/.ssh/authorized_keys )
+ perms=(     drwx------ -rw-------           -rw-r--r--          -rw------- )
+#perms=(     .rwx------ .rw-------           .rw-r--r--          .rw------- ) #tests
+set_perms=( 700        600                  644                 600 )
+ #echo ${pathnames[@]}
+ #echo ${perms[@]}
+ #echo ${set_perms[@]}
+ #echo ==================================================
+
+
+check_perm(){
+
+  pathname=${CL_PATHNAME-$1} 
+      perm=${CL_PERM-$2} 
+   setperm=${CL_SETPERM-$1} 
+
+  return_status=0
+
+  stat_perm=`stat -c %A ${pathnames[$i]}`
+  status=$?
+  
+  name=`basename ${pathnames[$i]}`
+  short_pathname=$(echo ${pathnames[$i]} | sed 's@'$HOME'@$HOME@')
+ #echo short_pathname=$short_pathname
+  
+  
+  if [[ $stat_perm == ${perms[$i]} ]]; then
+    printf "%s %-40s %s\n" "$l_space" "Permissions correct for $name:" "${perms[$i]}"
+  else
+    return_status=1
+    echo "$l_space FAILED Permissions on $short_pathname are incorrect."
+    echo "$l_space   Found:     $stat_perm permissions for $name"
+    echo "$l_space   Should be: ${perms[$i]}"
+    echo "$l_space   Execute:   chmod ${set_perms[$i]} $short_pathname"
+  fi
+
+ #[[ $space == "" ]] && pass_space=$l_space #first time no space
+  space=$l_space #first time no space
+}
+
+for i in ${!pathnames[@]}; do
+   check_perm ${pathnames[$i]} ${perms[$i]} ${set_perms[$i]}
+done
+
+exit $return_status
+}
+ 
+
+# === 02_X ===
+02_X(){
+
+printf "   %s\n"  "whatever X"
+
+exit 1
+}
+ 
+
+# === 03_Storage ===
+03_Storage(){
+
+# 1.) Determine if USER STORAGE DIRS (US_DIRS) are defined
+#     HOME, WORK, SCRATCH are critical, not defined is failure
+# 2.) Check Minimum Permissions (dwrx)
+# 3.) Write test
+
+## WRITE/READ test
+
+##TODO  STOCKYARD on all sys (including vista stockyard=work)
+##TODO  What about aptainer and singularity
+
+space10='          '
+STATUS=0
+
+host_name=`hostname -A`
+for sys in frontera vista stampede ls6; do
+  [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
+done
+TACC_SYS=stampede
+
+if [[ $AT_TACC == yes ]]; then
+   USER_STORAGE_DIRS=( HOME  SCRATCH WORK  STOCKYARD )
+  USER_STORAGE_PERMS=( drwx  drwx    drwxr drwx     )
+  CRITICAL_STORAGE_DIRS=( HOME )
+
+ #echo "STORAGE Environment Variable Definition & Directory Perms." 
+  echo "STORAGE ENV VARS & PERMS"
+  tab=$space10
+
+  # Determine if variables are defined
+  for i in ${!USER_STORAGE_DIRS[@]}; do
+      user_dir=${USER_STORAGE_DIRS[$i]}
+      if [[ ! -z ${!user_dir} ]]; then
+         printf "%s %-9s Variable  is defined.\n" "$tab" $user_dir
+         found_pathnames+=(${!user_dir})
+         found_storage_dirs+=($user_dir)
+         found_storage_perms+=(${USER_STORAGE_PERMS[@]})
+      else
+         printf "%s %-9s Variable NOT defined.\n" "$tab" $user_dir
+        #[[ $STATUS != 1 ]] && STATUS=3  #  retain critical status
+        #[[ ${CRITICAL_STORAGE_DIRS[@]} =~ $user_dir ]] && STATUS=1
+         STATUS=1
+      fi  
+  done
+
+  if [[ ${#found_storage_dirs[@]} == 0 ]]; then
+    echo "$tab None of the following User Storage Variables are defined:"
+    echo "$tab    (${USER_STORAGE_DIRS[@]})."
+    STATUS=1  #redundant, JIC some directories become only warnings in future
+  fi
+
+  # Check USER permission of directories for which variables are defined.
+  if [[ ${#found_storage_dirs[@]} -gt 0 ]]; then
+    for i in ${!found_storage_dirs[@]}; do
+       user_dir=${found_storage_dirs[$i]}
+       stat_perm=`stat -c %A ${found_pathnames[$i]}`
+       status=$? 
+       if [[ $stat_perm =~ ^${found_storage_perms[$i]} ]]; then
+          printf "%s %-9s directory USER permissions are valid (%s)..\n" \
+                 "$tab" $user_dir ${found_storage_perms[$i]}
+       else
+          printf "%s %-9s directory USER permissions (%s) NOT valid (required: %s).\n" \
+                 "$tab" $user_dir $stat_perm ${found_storage_perms[$i]}
+          STATUS=1
+      fi  
+    done
+  
+  fi
+
+  # test writing/reading from USER directories (that mount is correct)
+  if [[ ${#found_storage_dirs[@]} -gt 0 ]]; then
+    for i in ${!found_storage_dirs[@]}; do
+       user_dir=${found_storage_dirs[$i]}
+    done
+
+  fi
+fi
+
+  exit $STATUS
+}
+ 
+
+# === 04_Blocked_User ===
+04_Blocked_User(){
+
+# @TACC searches tacc_filter_options for blocked $USER.
+# If found print failure, and message if it exists.
+# See example of blocked_user line and message.
+# non-TACC sites need to interact with their ACL mechanism.
+# Based on Sanitytool's sanitycheck. Written and revised. 
+#                                   2025-08-01 Kent Milfeld
+
+#TODO Search for message within range of queue_acls/public
+
+space='          ' 
+STATUS=0
+
+host_name=`hostname -A`
+for sys in frontera vista stampede ls6; do
+  [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
+done
+
+if [[ $AT_TACC == yes ]]; then
+  ACL_DIR=/etc/slurm
+  filter_path=$ACL_DIR/tacc_filter_options
+  
+  # Get the beginning and end (next ^[tacc_filter sentinel) 
+  # of the tacc-file/queue_acls/public section
+  begin_ln=`grep -n '\[tacc_filter/queue_acls/public\]' $filter_path | sed 's/:.*//'`
+  all_ln_nos=(`grep -n '^\[tacc_filter' $filter_path | sed 's/:.*//'` )
+  for i in ${all_ln_nos[@]}; do
+    [[ $i -gt $begin_ln ]] && end_ln=$i && break
+  done
+
+  # if "ALL =" line continue, else warning.  For TEST set USER to blocked user here.
+  sed -n "$begin_ln,$end_ln p" $filter_path | grep -E '^\s*ALL\s*=' >/dev/null 2>&1
+  if [[ ${PIPESTATUS[1]} == 0 ]]; then
+
+    ACL_LINE=`sed -n "$begin_ln,$end_ln p" $filter_path | grep -E '^\s*ALL\s*='`
+    tmp1=${ACL_LINE#*\'}  # remove all up to and include single quote
+    tmp2=${tmp1%\'*}        # remove final quote and everything after
+    blocked_list=(${tmp2//\!/})        # remove exclamation characters
+
+    reg="\\b$USER\\b"
+    if [[ "${blocked_list[@]}" =~ $reg ]]; then
+
+      reg="^#*\s*\\b$USER\\b"  # Begins with one or more (OoM) "#"'s, OoM white spaces and boundary $USER boundry
+      message=`grep -E $reg $filter_path`
+      status=$?
+
+      [[ $status != 0 ]] && message="No message (reason) for blocking was included in the filter."
+      echo "$space $message"
+      exit 1
+
+    else
+      echo "QUEUES $USER has access to all queues (searched $filter_path)."
+    fi 
+  else
+    echo " NO \"ALL =\" line found in public queue acls."
+    echo "$space Even if no user found, root is usually blocked."
+    echo "$space If job submission work, don't consider this a problem."
+    STATUS=3
+  fi
+fi
+exit $STATUS
+
+# blocked sample  !! means has message
+ALL = '!root !!davidcho !!dkim5'
+# message sample
+# kent, DISABLED, 2024-10-04, user's OSU benchmarks hiccuped the IB fabric and left 80 nodes drained with IB err    ors via jobs 48351-48353.  <JED>
+}
+ 
+
+# === 05_Allocation ===
+05_Allocation(){
+
+space='          ' 
+
+host_name=`hostname -A`
+for sys in frontera vista stampede ls6; do
+  [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
+done
+
+                  #milfeld:*:1117:825112:milfeld:/home1/00770/milfeld:/bin/bash
+user_info=`getent passwd $USER`
+IFS=":" read -ra usr_etc_pwd <<< "$user_info"  # put fields in /usr_etc_pwd array
+
+user=${usr_etc_pwd[0]}
+ uid=${usr_etc_pwd[2]}
+ gid=${usr_etc_pwd[3]}
+home=${usr_etc_pwd[5]}
+login_shell=${usr_etc_pwd[6]}
+
+if [[ $AT_TACC == yes ]]; then
+  TACC_ACC_DIR="/usr/local/etc/"
+  [[ $sys == ls4 ]] && TACC_ACC_DIR=/sge_common/default/acct/map/
+         proj_map=$TACC_ACC_DIR/project.map
+     projuser_map=$TACC_ACC_DIR/projectuser.map
+  projbalance_map=$TACC_ACC_DIR/projectbalance.map
+        usage_map=$TACC_ACC_DIR/usage.map
+
+  projects=( $(grep -E "^${user}\\b" $projuser_map) ) #projuser_map
+  status=$?
+  projects=("${projects[@]:1}")  #remove 1st element, user name
+  if [[ $status == 0 ]]; then
+    echo "PROJECTS found (IDs ${projects[@]}, repectively): "
+  else
+    echo "No Projects found for user $user."
+    exit 1
+  fi
+
+  valid_count=0 expired_count=0
+  for proj_id in ${projects[@]}; do
+    name_id=( $(grep -E " $proj_id\\b" $proj_map) )  #$proj_map
+    proj_name=${name_id[0]}
+
+    
+    usage_line=( $(grep -E "^$proj_name:" $usage_map) )  #$usage_map
+    IFS=":" read -ra usage <<< "$usage_line"
+    start_date=${usage[2]}
+      end_date=${usage[3]}
+      allocate=${usage[4]}
+          used=${usage[5]}
+       balance=${usage[6]}
+
+    if [[ ${#usage[@]} -ne 7 ]]; then
+        echo -e "  WARNING: invalid account line for $proj_name:\n" \
+                "          $usage_line"
+                  #MCB22024:Vista:2022-04-26:2027-01-31:10000:3.496:9996.504
+    else
+      valid_count=$(( valid_count + 1 ))
+      today=`date +%F`
+      today_no=$(awk -F'-' '{printf("%4d%02d%02d\n",$1,$2,$3)}' <<< `date +%F`)
+        end_no=$(awk -F'-' '{printf("%4d%02d%02d\n",$1,$2,$3)}' <<< $end_date)
+
+      if [[ $today_no -gt $end_no ]]; then
+        expired_count=$(( expired_count + 1 ))
+        echo -e "  EXPIRED: Project $proj_name has expired ($end_date)\n"
+      else
+        printf  "%s ACTIVE : %8s (SUs Alloc:Used:Bal Exp) %8s %8.0f %8.0f %s \n" \
+                 "$space" "$proj_name" "${allocate}" "${used}" "${balance}" "$end_date"
+     fi
+    
+    fi
+  
+  done
+
+  if [[ $valid_count -gt 0 ]]; then 
+    if [[ $expired_count -eq $valid_count ]]; then
+      echo -e " FAIL: All valid projects are expired.\n"   #FAILURE
+      exit 1
+    fi
+    [[ $expired_count -gt 0 ]] && exit 3                    #WARNING
+  fi
+
+  exit 0
+
+fi
+}
+ 
+
+# === 06_Quota ===
+06_Quota(){
+space10='          '  tab=""
+host_name=`hostname -A`
+
+for sys in ls6 frontera stampede3 vista; do
+  [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
+done
+
+if [[ $AT_TACC == yes ]]; then
+  [[ $TACC_SYS == frontera ]] && filesystems=(/home1 /work) && FS=LUSTRE
+  [[ $TACC_SYS == ls6      ]] && filesystems=(/home1 /work) && FS=LUSTRE
+  [[ $TACC_SYS == vista    ]] && filesystems=(/home1 /work) && FS=VISTA
+fi
+
+OS=`uname`
+output=`df --version >/dev/null 2>&1`; status=$?
+if [[ $OS == Linux ]]; then
+  df_opts=-BG          # On Centos/Rocky
+elif [[ $OS == Darwin ]]; then
+  df_opts=-g           # On MacOS
+else
+  echo " ERROR (internal): Don't know OS for df command.  Bailing"
+  exit 1
+fi
+
+#Check use of local files systems
+local_disks=(/tmp)
+if [[ $OS == Darwin ]]; then                #Uses a single df for space and inode
+
+  for file_sys in ${local_disks[@]}; do
+    df_flds=(`df $df_opts $file_sys | tail -n 1`)
+  
+    space_used_no=${df_flds[4]%\%}
+    inode_used_no=${df_flds[7]%\%}
+  
+    [[ $((100-space_used_no)) -lt 11 ]] || [[ $((100-inode_used_no)) -lt 11 ]] &&
+    echo "$tab WARNING: space or inode availability low on $file_sys" 
+  
+    printf "%s %-8s [SPACE: %4s%% available of %4sGB]  [INODES: %4s%% free (%7s)]\n" \
+         "$tab" \
+         $file_sys $((100-space_used_no)) ${df_flds[1]} \
+                   $((100-inode_used_no)) ${df_flds[6]}
+  tab=$space10
+  done
+
+elif [[ $OS == Linux ]]; then                       # requires executing 2 df's: space and inodes
+  echo "STORAGE QUOTAS"
+
+  for file_sys in ${local_disks[@]}; do
+    df_space_flds=(`df    $df_opts $file_sys | tail -n 1`)
+    df_inode_flds=(`df -i $df_opts $file_sys | tail -n 1`)
+  
+    space_used_no=${df_space_flds[4]%\%} 
+    inode_used_no=${df_inode_flds[4]%\%}
+  
+    [[ $((100-space_used_no)) -lt 11 ]] || [[ $((100-inode_used_no)) -lt 11 ]] &&
+    echo "$tab WARNING: space or inode availability low on $file_sys" 
+  
+#   printf "%-8s [SPACE: %4s%% available of %4sGB]  [INODES: %4s%% free (%7s)]\n" \
+    printf "%s %-8s [SPACE: %4s%% available of %4s]  [INODES: %4s%% free (%7s)]\n" \
+           "$tab" \
+           $file_sys $((100-space_used_no)) ${df_space_flds[1]} \
+                     $((100-inode_used_no)) ${df_inode_flds[1]}
+  done
+  tab=$space10
+fi
+
+if [[ $AT_TACC == yes ]]; then
+  tab=$space10
+  for fs in ${filesystems[@]}; do
+     if [[ $TACC_SYS == vista ]]; then
+        if [[ $fs =~ work ]]; then
+          common_out=(`lfs quota   -u $USER  $fs | sed -n '3p'`)
+          [[ ${common_out[4]} == "-" ]] && common_out[4]=0     #make grace 0 if "-"
+          [[ ${common_out[8]} == "-" ]] && common_out[8]=0
+
+          common_out[1]=`echo $(echo "scale=2; ${common_out[1]}/1048576"  | bc -l)` #kbytes to gbytes
+          common_out[2]=`echo $(echo "scale=2; ${common_out[2]}/1048576"  | bc -l)`
+          common_out[3]=`echo $(echo "scale=2; ${common_out[3]}/1048576"  | bc -l)`
+          percent_used_space=`echo $(echo "scale=2; 100*${common_out[1]}/${common_out[3]}"  | bc -l)`
+          percent_used_inode=`echo $(echo "scale=2; 100*${common_out[5]}/${common_out[7]}"  | bc -l)`
+
+          # Report at login:
+          # Disk         Usage (GB)     Limit    %Used   File Usage       Limit   %Used |
+          # /scratch         1657.0       0.0     0.00      7120972           0    0.00 |
+          #Vista $ lfs quota   -u $USER  /work | sed -n '3p'
+          #/work 450798756       0 1073741824       - 2999996       0 3000000       -
+
+          echo "$tab Disk         Usage (GB)     Limit    %Used   File Count      Limit  %Used "
+          printf  "%s %-13s %9s %9s %8s %12s %10s %6s\n" \
+                  "$tab" \
+                   ${common_out[0]} \
+                   ${common_out[1]} ${common_out[3]} $percent_used_space \
+                   ${common_out[5]} ${common_out[7]} $percent_used_inode
+        else
+          out=`quota -s -w -f $fs`
+                      # filesys   used      quota     limit grace used      quota     limit grace
+          common_out=(${out[0]} ${out[1]} ${out[2]} ${out[3]} 0 ${out[4]} ${out[5]} ${out[7]} 0)
+        fi
+     fi
+   # echo $fs
+  done
+fi
+#Disk quotas for user milfeld (uid 1117): 
+#     Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
+#192.168.16.21:/vista/home1 23126004       0 24414060          282610       0  500000        
+#Disk quotas for usr milfeld (uid 1117):
+#     Filesystem  kbytes   quota   limit   grace   files   quota   limit   grace
+#          /work 450798756       0 1073741824       - 2999996       0 3000000       -
+#
+
+# df INFO from LINUS
+#$ df  -BG /tmp   #vistat
+#Filesystem                  1G-blocks  Used Available Use% Mounted on
+#/dev/mapper/rootvg01-lv_tmp      286G    3G      283G   1% /tmp
+#$  df -i -BG /tmp
+#Filesystem                     Inodes IUsed     IFree IUse% Mounted on
+#/dev/mapper/rootvg01-lv_tmp 149704704 13790 149690914    1% /tmp
+
+#exit 0
+
+
+#  space_used_MB=${limits[0]}
+# space_limit_MB=${limits[2]}
+#  inode_used=${limits[3]}
+# inode_limit=${limits[5]}
+# 
+# if [[ $space_limit_MB -gt 0.00 ]]; then
+#   if [[ $space_used_MB/$space_limit_MB -gt 0.95 ]]; then
+#     echo " Space used in $FS is above 95%."
+#   else
+#     echo "  ${percent}% of $percent of  12345 MB in $FS (limit: $ 
+#     #   At 90% of $FS quota (17GB used, 240GB available)
+#     #   At 90% of $FS user quota (17/240 GB used/avail)
+#   fi
+# else
+#   echo " No space limit on $FS."
+#   exit 0
+# fi
+
+     
+# v====== TACC COMMENTS ======v
+
+# Vista $ quota -f /scratch
+#Disk quotas for user milfeld (uid 1117): 
+#     Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
+#192.168.16.21:/vista/scratch
+#                1737490432       0 9765624217600         7120972       0       0   
+
+#Vistat $ quota -f /home1
+#Disk quotas for user milfeld (uid 1117): 
+#    Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
+#192.168.16.21:/vista/home1
+#                23125632       0 24414060          282526       0  500000     
+
+# Vistat Login Disk information
+#------------------------ Disk quotas for user milfeld -------------------------
+#| Disk         Usage (GB)     Limit    %Used   File Usage       Limit   %Used |
+#| /scratch         1657.0       0.0     0.00      7120972           0    0.00 |
+#| /home1*            22.1      23.3    94.72       282526      500000   56.51 |
+#| /work*            429.9    1024.0    41.98      2999996     3000000  100.00 |
+#-------------------------------------------------------------------------------
+}
+ 
+
+# === 07_Modules ===
+07_Modules(){
+# Check if module executable/function is available.
+# If @TACC Check if TACC module is loaded.
+# If @TACC Check if a default compiler system  is available.
+#                                 2025-08-01 Kent Milfeld
+# TODO If @TACC Check if a default MPI      library is available.
+# 
+# TODO 1.) Determine module type
+# TODO 2.) what about csh (alias module)
+# TODO 2.) means identifying login shell
+
+space10='          '
+
+  host_name=`hostname -A`
+  for sys in frontera vista stampede ls6; do
+    [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
+  done
+
+  if [[ $AT_TACC == yes ]]; then
+    TACC_compiler_families=( nvidia intel oneAPI llvm gcc )
+  fi
+
+  echo "MODULES Access and Loads"
+  tab=$space10
+
+
+  output=`type module`
+  if [[ $? == 0 ]]; then
+     cmd=executable
+     [[ $output =~ "module is a function" ]] && cmd=function
+     echo "$tab module $cmd found."
+  else
+     echo " No path/type for module command found."
+     echo " Check to make system initialization is defining the module function."
+     exit 1
+  fi
+
+  if [[ $AT_TACC == yes ]]; then
+    output=`ml is-loaded TACC`
+    if [[ $? == 0 ]]; then
+      printf "%s %-7s module is loaded.\n" "$tab" "TACC"
+    else
+      echo "$tab TACC module is NOT loaded-- a requirement for TACC environments."
+      exit 1
+    fi
+  
+    output=$(module describe 2>&1)
+    for comp in ${TACC_compiler_families[@]}; do   #( nvidia intel oneAPI llvm gcc)
+      reg="\\b${comp}\\b"
+      [[ $output =~ $reg  ]] &&  compilers+=($comp) #&& echo FOUND $comp -- ${compilers[@]}
+    done
+  
+    [[ ${#compilers[@]} ==  1 ]] && printf "%s %-7s module is the system default compiler system.\n" \
+                                    "$tab" ${compilers[0]}
+    [[ ${#compilers[@]} ==  0 ]] && echo "$tab No default compiler system found." &&  exit 1
+    [[ ${#compilers[@]} -gt 1 ]] && echo "$tab More than 1 compiler system found in default module." && 
+                                    echo "$tab Only a single compiler system can be accessible in a module env." &&
+                                    exit 1
+  fi
+  
+  exit 0
+
+#  TACC_compiler_families=( nvidia intel oneAPI llvm gcc)
+#vista $ ml describe
+#Collection "default" contains: 
+#   1) nvidia    2) nvpl    3) ucc    4) ucx    5) openmpi    6) cmake    7) xalt    8) TACC
+}
+ 
+
+# === 08_Compiler ===
+08_Compiler(){
+#  Determine which family of compilers are accessible
+#  with the present Environment.
+#  1.) Searches for compilers sets (families).
+#  2.) Incomplete is reported as a failure.
+#  3.) Expected to find gcc on all systems (failure otherwise)
+#  4.) At TACC, warning if module cmd/function not found 
+#      (reported as error in Module check).
+#  5.) At TACC failur4 is no default compiler system.
+#                                 2025-08-01 Kent Milfeld
+
+host_name=`hostname -A`
+for sys in frontera vista stampede ls6; do
+  [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
+done
+
+compiler_families=( nvidia intel oneAPI llvm gcc)
+
+declare -A sets
+sets[nvidia]="nvc nvc++ nvfortran"
+ sets[intel]="icc icpc ifort"
+sets[oneAPI]="icx icpx ifx"
+  sets[llvm]="clang clang++ flang"
+   sets[gcc]="gcc g++ gfortran"    #ALWAYS keep gcc last
+
+
+#Check for all known compilers
+all_found=()
+all_found_families=()
+for family in ${compiler_families[@]}; do
+
+  set=( ${sets[$family]} )
+  found=()
+  for compiler in ${set[@]}; do
+      output=`type $compiler 2>&1`
+      if [[ $? == 0 ]]; then 
+        found+=($compiler)
+        [[ $family != gcc ]] && found_gcc=True  # 4 test set to non-True
+      fi
+  done
+
+  if [[ ${#found[@]} -gt 0 ]]; then
+      all_found+=(${found[@]})
+      all_found_families+=("$family ")
+      if [[ ${#found[@]} -ne 3 ]]; then
+        incomplete_sets+=( "${family}: ${all_found[@]} " )
+          expected_sets+=( "${sets[$family]} " )
+      fi 
+  fi
+done
+
+if [[ ${#incomplete_sets[@]} -gt 0 ]]; then
+    echo " INCOMPLETE set(s) of compilers: (family:compilers) ${incomplete_sets[@]}"
+    echo " EXPECTED   set(s) of compilers: ${expected_sets[@]}"
+    exit 1
+fi
+
+if [[ "$found_gcc" == True ]]; then
+  if [[ ${#all_found_families[@]} -gt  1 ]]; then
+    echo "COMPILERS found families: ${all_found_families[@]} [${all_found[@]}]"    #PASS
+    exit 0
+  else
+    if [[ $AT_TACC == yes ]]; then
+      output=`type module` 
+      if [[ $? == 0 ]]; then
+        echo " No TACC non-GCC Compiler Family found. Searched for ${compiler_families[@]}"
+        echo " Please submit a ticket."
+        exit 1
+      else
+        echo " Since no module command was found, non-gcc system compilers were not expected to be found."
+        exit 3
+      fi
+    fi
+  fi
+else
+  echo " No GCC compilers (required) were found (${sets[gcc]}). Found these System Compilers: ${all_found[@]} "
+  exit 1
+fi
+}
+ 
+
+# === 09_Schedulers ===
+09_Schedulers(){
+
+#TODO:
+# determine what the scheduler
+# show queues, and determine status  (si with status)
+
+space10='          '
+tab=$space10
+
+type sbatch >& /dev/null
+[[ $? == 0 ]] && batch_sched+=(SLURM         ) && sched_cmds=(sbatch scancel squeue)
+type qsub >& /dev/null
+[[ $? == 0 ]] && batch_sched+=(PBS_TORQUE_SGE) && sched_cmds=(qsub qdel qstat)
+type bsub >& /dev/null
+[[ $? == 0 ]] && batch_sched+=(LSF           ) && sched_cmds=(bsub bkill bjobs)
+type llsubmit >& /dev/null
+[[ $? == 0 ]] && batch_sched+=(LOADLEVELER   ) && sched_cmds=(llsubmit llcancel llq)
+
+#batch_sched=()
+if [[ ${#batch_sched[@]} == 0 ]]; then
+   echo "No BATCH MANAGER FOUND. Checked for: "
+   echo "$tab SLURM,  PBS_TORQUE_SGE, LSF  and LOADLEVER with commands:"
+   echo "$tab sbatch, qsub,           bsub,    llsubmit, respectively."
+   exit 1
+elif [[ ${#batch_sched[@]} == 1 ]]; then
+   echo "BATCH manager is ${batch_sched[0]}"
+fi
+
+#host_name=`hostname -A`
+#for sys in frontera vista stampede ls6; do
+#  [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
+#done
+
+#if [[ $AT_TACC == yes ]]; then
+#  sched_cmds=(sbatch squeue scancel)
+#  [[ $TACC_SYS == ls4 ]] && sched_cmds=(qsub qstat qdel)
+#else
+#  sched_cmds=(qsub qstat qdel)
+#fi
+
+for sched_cmd in ${sched_cmds[@]}; do
+  output=`type $sched_cmd`
+  if [[ $? == 0 ]]; then 
+    found_cmds+=($sched_cmd)
+  else
+    not_found_cmds+=($sched_cmd)
+  fi
+done
+
+if [[ ${#sched_cmds[@]} -eq ${#found_cmds[@]} ]]; then
+   echo "$tab All BATCH scheduler command(s) found: ${found_cmds[@]}"
+else
+   echo "$tab Only found BATCH scheduler command(s): ${found_cmds[@]}"
+   echo "$tab Could not find the BATCH command(s): ${not_found_cmds[@]}"
+   exit 1
+fi
+
+
+#q_status=(`sinfo --noheader -o "%20P %5a"`)
+q_status=`sinfo --noheader -o "$tab   %10P %5a"`
+queue_count=`sinfo --noheader -o "$tab   %10P %5a" | wc -l`
+up_count=`echo $q_status | grep -o up | wc -l`
+
+echo "$tab PARTITION  AVAILABILITY"
+echo "$q_status"
+
+[[ $up_count == 0 ]]               && echo "$tab ALL QUEUES ARE NOT up"  && exit 1
+[[ $up_count != $queue_count ]] && echo "$tab NOT ALL QUEUES ARE up." && exit 3
+
+exit 0
+}
+ 
+clist=(01_SSH 02_X 03_Storage 04_Blocked_User 05_Allocation 06_Quota 07_Modules 08_Compiler 09_Schedulers) #defined for inserted functions above.
+USE=functions 
+ 
+#-----
+
+RED="\033[0;31m"
+MAG="\033[0;34m"
+RESET="\033[0m"
+#Black: 30, Red: 31, Green: 32, Yellow: 33, Blue: 34, Magenta: 35, Cyan: 36, and White: 37.
+
+#   Add APP Checks HERE to clist when check files (not functions) are used.
+if [[ -z $clist ]]; then
+  USE=scripts
+  CL_DIR=`pwd`
+  CL_CHECK_DIR=$CL_DIR
+  clist=( $(cd $CL_CHECK_DIR; ls -1 [0-9][0-9]*) )
+fi
+
+#   Add User Checks HERE to clist when check files (not functions) are used.
+CHECKLIST_USER_DIR=`pwd`/myown
+if [[ -d $CHECKLIST_USER_DIR ]]; then
+   user_clist=( $(cd $CHECKLIST_USER_DIR; ls -1 [0-9][0-9]*) )
+   clist=(${clist[@]} ${user_clist[@]})
+fi
+
+for check in ${clist[@]}; do
+
+  # Indicate when User check start, and use user's checlist directory
+  if [[ $check == ${user_clist[0]} ]]; then
+    USE=scripts
+    echo "  =========  vvv User Checklist vvv ============"
+    CL_DIR=$CHECKLIST_USER_DIR
+  fi
+
+  NO=${check%%_*}       # Get prefix sequence number (e.g. prefix number of 01_SSH)
+  [[ $USE == scripts   ]] && output=`$CL_DIR/$check` && status=$?
+  [[ $USE == functions ]] && output=$($check)           && status=$? #function option
+#output=$( ${list[@]} )
+
+  if [[ $status == 0 ]]; then
+      printf "PASSED"
+      printf " %3s %s\n" $NO "$output"
+  else
+      echo ""           # Space failures out and colorize them
+      printf ${RED}FAILED${RESET}
+      printf " %3s" $NO
+      printf " ${MAG}$output${RESET}"
+      echo ""
+  fi
+
+done

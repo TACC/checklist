@@ -1,0 +1,86 @@
+#!/bin/bash
+# 1.) Check permission on ~/.ssh directory
+# 2.) Check permission on ~/.ssh/*_id.pub 
+# 3.) Check permission on ~/.ssh/*_id
+# 4.) Check permission on ~/.ssh/authorized_keys
+# 5.) Make sure *_id.pub is in authorized_keys
+
+#TODO What if multiple keys?
+#TODO Exist later if 0 keys found (check directory permissions
+#TODO Exist later if OK with multiple keys
+#                                 2025-08-01 Kent Milfeld
+l_space='          '
+
+i=0
+pub_key_files=( id_ed25519.pub id_rsa.pub )
+
+output=`ls $HOME/.ssh/*.pub`
+if [[ $? != 0 ]]; then
+  echo " Could not find any public key (of form \*pub)."
+  exit 1
+else   #determine key type
+  for file in ${pub_key_files[@]}; do
+    if [[ $output =~ $file  ]]; then
+       pub_keys+=($file)
+    fi
+  done
+fi
+ [[ ${#pub_keys[@]}  == 1 ]] && echo "Found public  key ${pub_keys[0]}" && pub_key=${pub_keys[0]}
+ [[ ${#pub_keys[@]}  == 0 ]] && echo " Found NO public key (searched: ${pub_key_files[@]})" && exit 1
+#[[ ${#pub_keys[@]} -gt 1 ]] && echo " Found Multiple public key ${pub_keys[@]}." && exit 1
+
+ pub_key=${pub_keys[0]}
+priv_key=${pub_key%%.pub}
+
+output=`ls $HOME/.ssh/$priv_key`
+if [[ $? == 0 ]]; then
+  echo "$l_space Found private key $priv_key"
+else
+  echo "$l_space Could NOT find private key $priv_key."; exit 1
+fi
+
+pathnames=( $HOME/.ssh $HOME/.ssh/$priv_key $HOME/.ssh/$pub_key $HOME/.ssh/authorized_keys )
+ perms=(     drwx------ -rw-------           -rw-r--r--          -rw------- )
+#perms=(     .rwx------ .rw-------           .rw-r--r--          .rw------- ) #tests
+set_perms=( 700        600                  644                 600 )
+ #echo ${pathnames[@]}
+ #echo ${perms[@]}
+ #echo ${set_perms[@]}
+ #echo ==================================================
+
+
+check_perm(){
+
+  pathname=${CL_PATHNAME-$1} 
+      perm=${CL_PERM-$2} 
+   setperm=${CL_SETPERM-$1} 
+
+  return_status=0
+
+  stat_perm=`stat -c %A ${pathnames[$i]}`
+  status=$?
+  
+  name=`basename ${pathnames[$i]}`
+  short_pathname=$(echo ${pathnames[$i]} | sed 's@'$HOME'@$HOME@')
+ #echo short_pathname=$short_pathname
+  
+  
+  if [[ $stat_perm == ${perms[$i]} ]]; then
+    printf "%s %-40s %s\n" "$l_space" "Permissions correct for $name:" "${perms[$i]}"
+  else
+    return_status=1
+    echo "$l_space FAILED Permissions on $short_pathname are incorrect."
+    echo "$l_space   Found:     $stat_perm permissions for $name"
+    echo "$l_space   Should be: ${perms[$i]}"
+    echo "$l_space   Execute:   chmod ${set_perms[$i]} $short_pathname"
+  fi
+
+ #[[ $space == "" ]] && pass_space=$l_space #first time no space
+  space=$l_space #first time no space
+}
+
+for i in ${!pathnames[@]}; do
+   check_perm ${pathnames[$i]} ${perms[$i]} ${set_perms[$i]}
+done
+
+exit $return_status
