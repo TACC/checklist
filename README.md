@@ -1,6 +1,7 @@
 Checklist
 ==============
 
+Checklist evaluates the access/availability of critical components in User Space for using HPC Systems.
 Checklist 4.0 is a complete rewrite and redesign of the Sanitytool sanitycheck developed at TACC by McLay and Si Liu.
 
 #### General:
