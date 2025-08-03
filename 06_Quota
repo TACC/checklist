@@ -26,6 +26,8 @@ fi
 #Check use of local files systems
 local_disks=(/tmp)
 if [[ $OS == Darwin ]]; then                #Uses a single df for space and inode
+  echo "STORAGE QUOTAS"
+  tab=$space10
 
   for file_sys in ${local_disks[@]}; do
     df_flds=(`df $df_opts $file_sys | tail -n 1`)
@@ -40,11 +42,11 @@ if [[ $OS == Darwin ]]; then                #Uses a single df for space and inod
          "$tab" \
          $file_sys $((100-space_used_no)) ${df_flds[1]} \
                    $((100-inode_used_no)) ${df_flds[6]}
-  tab=$space10
   done
 
 elif [[ $OS == Linux ]]; then                       # requires executing 2 df's: space and inodes
   echo "STORAGE QUOTAS"
+  tab=$space10
 
   for file_sys in ${local_disks[@]}; do
     df_space_flds=(`df    $df_opts $file_sys | tail -n 1`)
@@ -62,7 +64,6 @@ elif [[ $OS == Linux ]]; then                       # requires executing 2 df's:
            $file_sys $((100-space_used_no)) ${df_space_flds[1]} \
                      $((100-inode_used_no)) ${df_inode_flds[1]}
   done
-  tab=$space10
 fi
 
 if [[ $AT_TACC == yes ]]; then
