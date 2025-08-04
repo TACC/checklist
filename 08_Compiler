@@ -8,7 +8,8 @@
 #      (reported as error in Module check).
 #  5.) At TACC failur4 is no default compiler system.
 #                                 2025-08-01 Kent Milfeld
-
+STATUS=0
+space='          ' tab=""
 host_name=`hostname -A`
 for sys in frontera vista stampede ls6; do
   [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
@@ -25,54 +26,34 @@ sets[oneAPI]="icx icpx ifx"
 
 
 #Check for all known compilers
-all_found=()
-all_found_families=()
-for family in ${compiler_families[@]}; do
+echo "Searching for Compiler Families (complete sets: C/C++/Fortran)"
+tab=$space
 
+for family in ${compiler_families[@]}; do
   set=( ${sets[$family]} )
   found=()
   for compiler in ${set[@]}; do
       output=`type $compiler 2>&1`
       if [[ $? == 0 ]]; then 
         found+=($compiler)
-        [[ $family != gcc ]] && found_gcc=True  # 4 test set to non-True
       fi
   done
 
-  if [[ ${#found[@]} -gt 0 ]]; then
-      all_found+=(${found[@]})
-      all_found_families+=("$family ")
-      if [[ ${#found[@]} -ne 3 ]]; then
-        incomplete_sets+=( "${family}: ${all_found[@]} " )
-          expected_sets+=( "${sets[$family]} " )
-      fi 
+  flat_found="${found[@]}"
+    flat_set="${set[@]}"
+  if [[ ${#found[@]} == 0 ]]; then
+     printf "%s %-6s family    NOT AVAILABLE in present module environment.\n"       "$tab" $family
+     [[ $family == gcc ]] && printf "%s       family is required!\n" "         $tab" && STATUS=1
+  fi
+
+  if [[ ${#found[@]} == 1 ]] || [[ ${#found[@]} == 2 ]]; then
+     printf "%s %-6s family SUBSET AVAILABLE in present module environment (%s).\n"  "$tab"  $family  "$flat_found"
+     [[ $family == gcc ]] && printf "%s       Complete family is required!\n" "$tab" "$flat_set"  && STATUS=1
+  fi
+
+  if [[ ${#found[@]} == 3 ]] || [[ ${#found[@]} == 1 ]]; then
+     printf '%s %-6s family    ALL AVAILABLE in present module environment (%s).\n'  "$tab"  $family  "$flat_found"
   fi
 done
 
-if [[ ${#incomplete_sets[@]} -gt 0 ]]; then
-    echo " INCOMPLETE set(s) of compilers: (family:compilers) ${incomplete_sets[@]}"
-    echo " EXPECTED   set(s) of compilers: ${expected_sets[@]}"
-    exit 1
-fi
-
-if [[ "$found_gcc" == True ]]; then
-  if [[ ${#all_found_families[@]} -gt  1 ]]; then
-    echo "COMPILERS found families: ${all_found_families[@]} [${all_found[@]}]"    #PASS
-    exit 0
-  else
-    if [[ $AT_TACC == yes ]]; then
-      output=`type module` 
-      if [[ $? == 0 ]]; then
-        echo " No TACC non-GCC Compiler Family found. Searched for ${compiler_families[@]}"
-        echo " Please submit a ticket."
-        exit 1
-      else
-        echo " Since no module command was found, non-gcc system compilers were not expected to be found."
-        exit 3
-      fi
-    fi
-  fi
-else
-  echo " No GCC compilers (required) were found (${sets[gcc]}). Found these System Compilers: ${all_found[@]} "
-  exit 1
-fi
+exit $STATUS
