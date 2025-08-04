@@ -24,12 +24,13 @@ USAGE1=" -> USAGE: `basename $0` [scripts|functions] "
 USAGE2=" ->         Use functions normally, scripts if developing." 
 
 [[ $# -ne 1 ]] &&  echo "$USAGE1" && echo " $USAGE_more" && exit 1
-
 [[ $1 == scripts   ]] && ./mk_checklist.sh scripts
 [[ $1 == functions ]] && ./mk_checklist.sh functions
 
+exit
 [[ $1 != scripts ]] && [[ $1 != functions ]] &&  \
    echo " Error: did not understand $0 $1" && echo "$USAGE1" && exit 1
+exit
 
 #============
 

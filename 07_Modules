@@ -35,30 +35,51 @@ space10='          '
      exit 1
   fi
 
-  if [[ $AT_TACC == yes ]]; then
-    output=`ml is-loaded TACC`
-    if [[ $? == 0 ]]; then
-      printf "%s %-7s module is loaded.\n" "$tab" "TACC"
-    else
-      echo "$tab TACC module is NOT loaded-- a requirement for TACC environments."
-      exit 1
-    fi
+if [[ $AT_TACC == yes ]]; then
+  output=`ml is-loaded TACC`
+  if [[ $? == 0 ]]; then
+    printf "%s %-7s module is loaded.\n" "$tab" "TACC"
+  else
+    echo "$tab TACC module is NOT loaded-- a requirement for TACC environments."
+    exit 1
+  fi
   
-    output=$(module describe 2>&1)
+  type=no_default
+  output=$(module describe 2>&1)
+  if [[ "$output" =~ "Collection \"default\" contains:" ]]; then
+    type=has_default
+
     for comp in ${TACC_compiler_families[@]}; do   #( nvidia intel oneAPI llvm gcc)
       reg="\\b${comp}\\b"
       [[ $output =~ $reg  ]] &&  compilers+=($comp) #&& echo FOUND $comp -- ${compilers[@]}
     done
-  
-    [[ ${#compilers[@]} ==  1 ]] && printf "%s %-7s module is the system default compiler system.\n" \
-                                    "$tab" ${compilers[0]}
-    [[ ${#compilers[@]} ==  0 ]] && echo "$tab No default compiler system found." &&  exit 1
-    [[ ${#compilers[@]} -gt 1 ]] && echo "$tab More than 1 compiler system found in default module." && 
-                                    echo "$tab Only a single compiler system can be accessible in a module env." &&
-                                    exit 1
+
+    if [[ ${#compilers[@]} ==  1 ]]; then
+      type=loaded_default
+      printf "%s %-7s module is the $type the default and loaded compiler system.\n" "$tab" ${compilers[0]}
+    fi
+    [[ ${#compilers[@]} ==  0 ]] && echo "$tab No compiler found in default system system module." &&  exit 1
+    [[ ${#compilers[@]} -gt 1 ]] && echo "$tab More than 1 compiler system found in the default module." && 
+                                      echo "$tab Only a single compiler system can be loaded in a module env." &&
+                                      exit 1
   fi
   
-  exit 0
+  if [[ $type != has_default ]]; then
+    for comp in ${TACC_compiler_families[@]}; do   #( nvidia intel oneAPI llvm gcc)
+      module is-loaded $comp #>/dev/null 2>&1 
+      [[ $? == 0 ]] &&  loaded_compilers+=($comp)
+    done
+  
+    [[ ${#loaded_compilers[@]} ==  1 ]] && printf "%s %-7s module is the loaded compiler system.\n" \
+                                        "$tab" ${loaded_compilers[0]}
+    [[ ${#loaded_compilers[@]} ==  0 ]] && echo "$tab No loaded compiler system found." &&  exit 1
+    [[ ${#loaded_compilers[@]} -gt 1 ]] && echo "$tab More than 1 compiler system found in the loaded module." && 
+                                        echo "$tab Only a single compiler system can be loaded in a module env." &&
+                                        exit 1
+  fi
+
+fi
+exit 0
 
 #  TACC_compiler_families=( nvidia intel oneAPI llvm gcc)
 #vista $ ml describe
