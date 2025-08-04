@@ -1,0 +1,24 @@
+1.) rename 09_Schedulers => 09_Batch_System
+2.) rename  08_Compiler  => 08_Compilers
+3.) rename 06_Quota      => 06_Quotas
+4.) Finish Reservations
+02_X
+03_Storage
+04_Blocked_User
+05_Allocation
+06_Quota
+07_Modules
+08_Compiler
+09_Schedulers
+
+
+01_SSH
+02_X
+03_Storage
+04_Blocked_User
+05_Allocation
+06_Quota
+07_Modules
+08_Compiler
+09_Schedulers
+

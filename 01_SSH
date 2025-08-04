@@ -14,6 +14,8 @@ l_space='          '
 i=0
 pub_key_files=( id_ed25519.pub id_rsa.pub )
 
+echo "SSH setup"
+
 output=`ls $HOME/.ssh/*.pub`
 if [[ $? != 0 ]]; then
   echo " Could not find any public key (of form \*pub)."
@@ -25,8 +27,8 @@ else   #determine key type
     fi
   done
 fi
- [[ ${#pub_keys[@]}  == 1 ]] && echo "Found public  key ${pub_keys[0]}" && pub_key=${pub_keys[0]}
- [[ ${#pub_keys[@]}  == 0 ]] && echo " Found NO public key (searched: ${pub_key_files[@]})" && exit 1
+ [[ ${#pub_keys[@]}  == 1 ]] && echo "$l_space Found public  key ${pub_keys[0]}" && pub_key=${pub_keys[0]}
+ [[ ${#pub_keys[@]}  == 0 ]] && echo "$l_space Found NO public key (searched: ${pub_key_files[@]})" && exit 1
 #[[ ${#pub_keys[@]} -gt 1 ]] && echo " Found Multiple public key ${pub_keys[@]}." && exit 1
 
  pub_key=${pub_keys[0]}
