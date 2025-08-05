@@ -74,6 +74,7 @@ if [[ $AT_TACC == yes ]]; then
     do_cmd=lfs
     [[ $fs =~ home1 ]] && [[ $TACC_SYS == vista     ]] && do_cmd=quota
     [[ $fs =~ home1 ]] && [[ $TACC_SYS == stampede3 ]] && do_cmd=quota
+    [[ $fs =~ home1 ]] && [[ $TACC_SYS == ls6       ]] && do_cmd=quota
 
     if [[ $do_cmd =~ lfs ]] ; then
       common_out=(`lfs quota   -u $USER  $fs | sed -n '3p'`)
@@ -113,7 +114,12 @@ if [[ $AT_TACC == yes ]]; then
       common_out[2]=`echo $(echo "scale=2; ${common_out[2]}/1048576"  | bc -l)`
       common_out[3]=`echo $(echo "scale=2; ${common_out[3]}/1048576"  | bc -l)`
       percent_used_space=`echo $(echo "scale=2; 100*${common_out[1]}/${common_out[3]}"  | bc -l)`
-      percent_used_inode=`echo $(echo "scale=2; 100*${common_out[5]}/${common_out[7]}"  | bc -l)`
+      if [[ ${common_out[7]} != 0 ]]; then  #fix for home1 on ls6
+        percent_used_inode=`echo $(echo "scale=2; 100*${common_out[5]}/${common_out[7]}"  | bc -l)`
+      else
+        percent_used_inode="-"
+        common_out[7]="-"
+      fi
 
       echo "$tab Disk         Usage (GB)     Limit    %Used   File Count      Limit  %Used "
       printf  "%s %-13s %9s %9s %8s %12s %10s %6s\n" \
