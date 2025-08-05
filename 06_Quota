@@ -5,11 +5,13 @@ host_name=`hostname -A`
 for sys in ls6 frontera stampede3 vista; do
   [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
 done
+echo TACC=$TACC_SYS
 
 if [[ $AT_TACC == yes ]]; then
-  [[ $TACC_SYS == frontera ]] && filesystems=(/home1 /work) && FS=LUSTRE
-  [[ $TACC_SYS == ls6      ]] && filesystems=(/home1 /work) && FS=LUSTRE
-  [[ $TACC_SYS == vista    ]] && filesystems=(/home1 /work) && FS=VISTA
+  [[ $TACC_SYS == frontera  ]] && filesystems=(/home1 /work)
+  [[ $TACC_SYS == ls6       ]] && filesystems=(/home1 /work)
+  [[ $TACC_SYS == vista     ]] && filesystems=(/home1 /work)
+  [[ $TACC_SYS == stampede3 ]] && filesystems=(/home1 /work)
 fi
 
 OS=`uname`
@@ -70,7 +72,8 @@ if [[ $AT_TACC == yes ]]; then
   tab=$space10
   for fs in ${filesystems[@]}; do
     do_cmd=lfs
-    [[ $fs =~ home1 ]] && [[ $TACC_SYS == vista ]] && do_cmd=quota
+    [[ $fs =~ home1 ]] && [[ $TACC_SYS == vista     ]] && do_cmd=quota
+    [[ $fs =~ home1 ]] && [[ $TACC_SYS == stampede3 ]] && do_cmd=quota
 
     if [[ $do_cmd =~ lfs ]] ; then
       common_out=(`lfs quota   -u $USER  $fs | sed -n '3p'`)
