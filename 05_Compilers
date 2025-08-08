@@ -8,8 +8,14 @@
 #      (reported as error in Module check).
 #  5.) At TACC failur4 is no default compiler system.
 #                                 2025-08-01 Kent Milfeld
-STATUS=0
+
+[[ $# != 1 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
+[[ $1 == t ]] && O=T 
+[[ $1 == v ]] && O=V 
+
 space='          ' tab=""
+STATUS=0
+
 host_name=`hostname -A`
 for sys in frontera vista stampede ls6; do
   [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys

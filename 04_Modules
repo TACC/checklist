@@ -9,7 +9,11 @@
 # TODO 2.) what about csh (alias module)
 # TODO 2.) means identifying login shell
 
-space10='          '
+[[ $# != 1 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
+[[ $1 == t ]] && O=T 
+[[ $1 == v ]] && O=V 
+
+space10='          '  tab=""
 
   host_name=`hostname -A`
   for sys in frontera vista stampede ls6; do

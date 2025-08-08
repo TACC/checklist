@@ -10,6 +10,10 @@
 ##TODO  STOCKYARD on all sys (including vista stockyard=work)
 ##TODO  What about aptainer and singularity
 
+[[ $# != 1 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
+[[ $1 == t ]] && O=T
+[[ $1 == v ]] && O=V
+
 space10='          '
 STATUS=0
 

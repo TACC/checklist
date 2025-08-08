@@ -1,6 +1,11 @@
 #!/bin/bash
 
-space='          ' 
+[[ $# != 1 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
+[[ $1 == t ]] && O=T 
+[[ $1 == v ]] && O=V 
+
+space10='          '  tab=""
+STATUS=0
 
 host_name=`hostname -A`
 for sys in frontera vista stampede ls6; do
@@ -29,7 +34,10 @@ if [[ $AT_TACC == yes ]]; then
   status=$?
   projects=("${projects[@]:1}")  #remove 1st element, user name
   if [[ $status == 0 ]]; then
-    echo "PROJECTS found (IDs ${projects[@]}, repectively): "
+    if [[ $O == N ]] || [[ $O == V ]] ; then
+      echo "PROJECTS found (IDs ${projects[@]}, repectively): "
+      tab=$space10
+    fi
   else
     echo "No Projects found for user $user."
     exit 1
@@ -50,9 +58,10 @@ if [[ $AT_TACC == yes ]]; then
        balance=${usage[6]}
 
     if [[ ${#usage[@]} -ne 7 ]]; then
-        echo -e "  WARNING: invalid account line for $proj_name:\n" \
-                "          $usage_line"
+        echo -e "$tab“  WARNING: invalid account line for $proj_name:\n" \
+                "$tab          $usage_line"
                   #MCB22024:Vista:2022-04-26:2027-01-31:10000:3.496:9996.504
+        STATUS=3
     else
       valid_count=$(( valid_count + 1 ))
       today=`date +%F`
@@ -61,14 +70,25 @@ if [[ $AT_TACC == yes ]]; then
 
       if [[ $today_no -gt $end_no ]]; then
         expired_count=$(( expired_count + 1 ))
-        echo -e "  EXPIRED: Project $proj_name has expired ($end_date)\n"
+        if [[ $O == N ]] || [[ $O == V ]] ; then
+          echo -e "$tab  EXPIRED: Project $proj_name has expired ($end_date)\n"
+        fi
+        exp_proj+=($proj_name)
       else
-        printf  "%s ACTIVE : %8s (SUs Alloc:Used:Bal Exp) %8s %8.0f %8.0f %s \n" \
-                 "$space" "$proj_name" "${allocate}" "${used}" "${balance}" "$end_date"
-     fi
-    
+        if [[ $O == N ]] || [[ $O == V ]] ; then
+          printf  "%s ACTIVE : %8s (SUs Alloc:Used:Bal:Exp) %8s %8.0f %8.0f %s \n" \
+                   "$tab" "$proj_name" "${allocate}" "${used}" "${balance}" "$end_date"
+        fi
+          balance=${balance%.*}
+          act_proj+=( $proj_name:Bal=$balance)
+      fi
+
+      if [[ $proj_id == ${projects[-1]} ]] && [[ $O == T ]] ; then
+    # if [[ $O == T ]] ; then
+         [[ ${#exp_proj[@]} -gt 0 ]] && EXP="Expired: ${exp_proj[@]}"
+         echo "$tab Active: ${act_proj[@]} $EXP" 
+      fi
     fi
-  
   done
 
   if [[ $valid_count -gt 0 ]]; then 

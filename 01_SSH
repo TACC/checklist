@@ -9,6 +9,11 @@
 #TODO Exist later if 0 keys found (check directory permissions
 #TODO Exist later if OK with multiple keys
 #                                 2025-08-01 Kent Milfeld
+
+  [[ $# != 1 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
+  [[ $1 == t ]] && O=T
+  [[ $1 == v ]] && O=V
+
 l_space='          '
 
 i=0

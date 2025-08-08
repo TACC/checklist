@@ -1,0 +1,279 @@
+#!/bin/bash
+
+#Report SLURM Reservations -- Very Specific to TACC
+# AT TACC SLURM reservations are made by username, projects, and groupIDs.
+#
+# 1.) Get user's projects.
+# 2.) Find all reservations
+# 3.) terse   report: only report reservation names if user/acct is on a reservation
+
+# 3.) normal  report: Reservation details of all reservations are reported in 90 columns
+#     ( RESERVATION_NAME  STATE PARTITION [START M-D h:m] \
+#                               [Wait:|Used:]  DURATION [User:|Acct])
+
+# 3.) verbose report: More reservation details of all reservations are reported +90 columns
+#     ( RESERVATION_NAME    STATE   PARTITION NODES [START  M-D h:m] \
+#                                   [Wait:|Used:]  DURATION [Usr:|Acct:|Grp])
+
+##TODO Include group_id reservations (seldom done) in report.
+##TODO Fix Node value in REMORA
+## $RN    ${r[$i,11]} $PART      ${r[$i,5]} "$start_time" "$WAITorUSED_Duration" "$UAG"
+
+#                                                       2025-08-07 Written by Kent Milfeld
+
+  [[ $# != 1 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
+  [[ $1 == t ]] && O=T
+  [[ $1 == v ]] && O=V
+
+  space10='          '  tab=""
+
+  host_name=`hostname -A`
+  for sys in frontera vista stampede ls6; do
+    [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
+  done
+
+if [[ $AT_TACC == yes ]]; then
+                       TACC_ACC_DIR="/usr/local/etc/"
+  [[ $sys == ls4 ]] && TACC_ACC_DIR=/sge_common/default/acct/map/
+             proj_map=$TACC_ACC_DIR/project.map
+         projuser_map=$TACC_ACC_DIR/projectuser.map
+      projbalance_map=$TACC_ACC_DIR/projectbalance.map
+            usage_map=$TACC_ACC_DIR/usage.map
+  proj_ids=( $(grep -E "^${USER}\\b" $projuser_map) ) #projuser_map
+  status=$?
+
+  proj_ids=("${proj_ids[@]:1}")  #remove 1st element, user name
+  if [[ $status != 0 ]]; then
+    echo "Projects NON FOUND -- Site ERROR."
+    exit 1
+  fi
+
+  for proj_id in ${proj_ids[@]}; do
+    name_id=( $(grep -E " $proj_id\\b" $proj_map) )  #$proj_map
+    proj_names+=(${name_id[0]})
+  done
+fi
+
+#Utility Functions
+  get_waitRused_duration() {
+     #   Time now, and reservation start and end time
+     #   Determine Wait or reservation Used time, and duration
+     #   in "W: DDD-HH:mm" or "U: DDD-HH:mm" fir Wait/Uses time
+     #   plus  "DDD-HH:mm" for Duration. If DDD=0, DDD- not included.
+     #   e.g U: 1-01:02   2-00:00 == Used 1day, 1hr, 2min of 2day reservation.
+         d1=$(date -d "$1" +%s) #now
+         d2=$(date -d "$2" +%s) #start
+         d3=$(date -d "$3" +%s) #end
+  
+     #Time to Wait or Time Used 
+      delta=$(( d2-d1))
+          d=delta
+      [[ $delta -lt 0 ]] && d=$(( -delta ))
+  
+     days=$(( d/86400 ))
+        h=$(( d-(days*86400) ))
+      hrs=$(( h/3600 ))
+        m=$(( h-(hrs*3600) ))
+      min=$(( m/60 ))
+      sec=$(( m-(min*60) ))
+  
+     #reservation (r) duration 
+      rdelta=$(( d3-d2))
+          rd=rdelta
+     rdays=$(( rd/86400 ))
+       rh=$(( rd-(rdays*86400) ))
+     rhrs=$(( rh/3600 ))
+       rm=$(( rh-(rhrs*3600) ))
+     rmin=$(( rm/60 ))
+     rsec=$(( rm-(rmin*60) ))
+  
+     [[ $rdays -gt 0 ]] && res_dur=$(printf " %3d-%02d:%02d\n" $rdays $rhrs $rmin )
+     [[ $rdays -eq 0 ]] && res_dur=$(printf "     %02d:%02d\n"        $rhrs $rmin )
+     res_frmt="%10s"
+  
+     if [[ $delta -lt 0 ]]; then
+        [[ $days -ne 0 ]] && printf "U:%3d-%02d:%02d $res_frmt\n" $days $hrs $min $res_dur #$sec
+        [[ $days -eq 0 ]] && printf "U:    %02d:%02d $res_frmt\n"       $hrs $min $res_dur #$sec
+     else
+        [[ $days -ne 0 ]] && printf "W:%3d-%02d:%02d $res_frmt\n" $days $hrs $min $res_dur #$sec
+        [[ $days -eq 0 ]] && printf "W:    %02d:%02d $res_frmt\n"       $hrs $min $res_dur #$sec
+     fi  
+  }
+  
+  ndx_order_by_val_sort(){
+      # create array of "index + value" 
+      # | sort lines on value (k2) numerically (n) 
+      # | remove values (using space as delimiter)
+    local args=($@)
+    for (( i = 0; i < ${#args[@]}; ++i)); do
+      echo "$i ${args[i]}"
+    done | sort -k2n | cut -d' ' -f1 
+  }
+
+### END Functions    
+
+   if [[ -z $IDEV_RES_INPUT ]]; then
+      readarray -t R_lines <<< "$( scontrol show res --oneliner )"
+   else
+      readarray -t R_lines <<< "$( cat $IDEV_RES_INPUT )"
+      echo " -> Reading TEST reservations from IDEV_RES_INPUT=$IDEV_RES_INPUT"
+   fi
+
+   no_res_txt=""
+   [[ ${R_lines[0]} =~ "No reservations in the system" ]] && R_lines=() && no_res_txt="No reservations in the system"
+   nres=${#R_lines[@]}
+
+   R_keys=(ReservationName StartTime EndTime Duration Nodes NodeCnt CoreCnt PartitionName Users Accounts Groups State Flags)
+   #             0             1       2        3      4       5      6         7          8        9     10     11    12
+
+   # r is a hash table for reservations. 
+   # r[$i,$j] i=reservation line index (each reservation is read as a line
+   #          j=value index, j index corresponds to the R_keys[$j] key name
+  
+   declare -A r    
+   starts=()
+   for i in "${!R_lines[@]}"; do
+      res=(${R_lines[$i]})
+      for k in ${!R_keys[@]}; do r[$i,$k]="null"; done   #initialize r to "(null)"
+   
+      for index in ${!R_keys[@]}; do
+      for pair  in ${res[@]}; do
+        if [[ $pair =~ ${R_keys[$index]} ]]; then
+           val=$pair
+           val=${val##*=}  #remove <key>= from <key>=<value> pair
+           [[ $val ==    ""    ]] && val="null"
+           [[ $val == '(null)' ]] && val="null"
+           r[$i,$index]=$val
+           break
+        fi
+      done
+      done
+   
+      # get start time as seconds since 1970-01-01 00:00:00 UTC, for ordering reservations by start time
+      starts[$i]=$( date -d "${r[$i,1]}" +%s )
+
+   done 
+   
+   if [[ ! -z $IDEV_DEBUG ]];then 
+     for i in ${!R_lines[@]}; do
+       for j in ${!R_keys[@]};do 
+         [[ $j -eq 0 ]] && echo " -> Reservation ${r[$i,0]} ----------"
+         printf "   %2d %15s %s\n" $j ${R_keys[$j]} ${r[$i,$j]}; 
+       done
+     done
+     [[ ${#starts[@]} -ne 0 ]] && echo "   Reservations start-time order: ${starts[@]}"
+   fi
+
+   # Use this index array if the scontrol show res  lines are not ordered in time
+   #readarray -t ndx_ResStartOrder <<<"$(ndx_order_by_val_sort ${starts[@]})"
+   ndx_ResStartOrder=($(ndx_order_by_val_sort ${starts[@]}))
+
+   ## July 27, 2024 replacement ^^
+    
+   RN_lmax=16
+
+   now_yy=$(date +%y)
+   now=$(date +"%Y-%m-%dT%H:%M:%S")
+
+   if [[ $nres -ne 0 ]]; then
+      if [[ $O == V ]]; then
+        echo "RESERVATIONS for All users."
+        tab=$space10
+        echo "$tab RESERVATION_NAME    STATE   PARTITION NODES [START  M-D h:m] [Wait:|Used:]  DURATION [Usr:|Acct:|Grp]"
+      fi
+      if [[ $O == N ]]; then
+        echo "RESERVATIONS for $USER or projects of user."
+        tab=$space10
+        echo "$tab RESERVATION_NAME  STATE PARTITION [START M-D h:m] [Wait:|Used:]  DURATION [Usr:|Acct:|G:]"
+      fi
+   fi
+   [[ $nres -eq 0 ]] &&
+      echo "RESERVATIONS NO reservation appear on the system." && exit 0
+
+   my_ress=() 
+   for i in ${ndx_ResStartOrder[@]}; do
+     start=${r[$i,1]}
+       end=${r[$i,2]}
+
+     start_yy=${r[$i,1]:2:2}      # gets yy out of YYyy-...
+  
+     date -d "$start" +%s >& /dev/null
+     [[ $? -ne 0 ]] && start=2020-01-01T00:00:00 now=2022-09-26T01:00:00 end=2022-09-26T01:00:00  #D999
+########  WHAT IS THIS RM  KENT
+     
+     WAITorUSED_Duration=$( get_waitRused_duration $now $start $end )
+     
+     UAG="NO ACCESS"
+     [[ ${r[$i,10]} != null ]] && UAG="G: ${r[$i,10]}"  && uses_grp_access=yes
+     [[ ${r[$i,8]}  != null ]] && UAG="U: ${r[$i,8]}"
+     [[ ${r[$i,9]}  != null ]] && UAG="${string}A: ${r[$i,9]}"
+  
+     PART=${r[$i,7]}
+     [[ ${r[$i,7]} == null ]] && PART="        -"   # don't put null if no partition
+     
+     # Change format of start time: YYYY-MM-DDThh:mm:ss => MM-DD hh:mm
+     start_time=$( echo ${r[$i,1]} |  sed  's/^.....\(.....\)T\(.....\).*/\1 \2/' ) 
+     [[ $now_yy -ne $start_yy ]] && start_time=${start_yy}-$start_time
+###
+     RN=${r[$i,0]} n=${#RN}
+#echo "---------------------------------------$RN. n=$n."
+     if [[ $n -gt $RN_lmax ]]; then
+         nbase=$(( RN_lmax - 6))
+      c1=${RN:0:$nbase}  # first  nbase chars  (base)
+      c2='..'           # middle 2 chars, short elipse
+         from=$((n-4)) to=$((n-1))
+      c3=${RN:$from:$to} # last 4 char
+      RN="$c1$c2$c3"
+##     echo "c1:$c1.  c2:$c2.  c3:$c3."
+     fi
+
+     if [[ $O == V ]]; then  #Normal report size
+            #         RN    ST PART  N   S  WUG  UAG
+             printf "%s %16.16s%9s%12s%6s%16s%25s  %s\n" "$tab" \
+                      $RN    ${r[$i,11]} $PART      ${r[$i,5]} "$start_time" "$WAITorUSED_Duration" "$UAG"
+                 #    $RN    ${r[$i,11]} $PART      ${r[$i,3]} "$start_time" "$WAITorUSED_Duration" "$UAG"
+                 #${r[$i,0]} ${r[$i,11]} $PART      ${r[$i,3]} "$start_time" "$WAITorUSED_Duration" "$UAG"
+                 #      |         |             |     |           |           /     /     |         | |   \
+                 #  Res Name    State   Partition Nodes [Start M-D h:m] [Wait:|Used:]  Duration [Usr:|Acct:|Grp]
+                 #replace_co INACTIVE  developmet    36    12-19 08:00   W:  4-12:38  369-21:27  U: milfeld
+                 #      DAOS   ACTIVE        null     4    12-19 08:00   W:  1-01:02    1-00:00  U: milfeld,cazes
+                 #234567890|23456789|12345678901|34567|90123456789012|4567890123456|8901234567|9012345678901234567890
+                 #     11      9         12        6        15        <           25         >
+       continue
+     fi
+
+     reg="\\b$USER\\b"; [[ $UAG =~ $reg ]] && UAG="U: ${USER}" && found_user=yes && my_ress+=(${r[$i,0]} )
+     for nam in ${proj_names[@]}; do
+       reg="\\b$nam\\b"; [[ $UAG =~ $reg ]] && UAG_list+=(${nam}) && found_project=yes
+     done
+     [[ ${#UAG_list[@]} -gt 0 ]] && UAG="A: ${UAG_list[@]}" && my_ress+=(${r[$i,0]})  #should not be multiple Accts; but JIC
+     
+     if [[ $O == N ]]; then  #Normal report size
+     
+        # Shorten STATE, PARTITION and User/Acct list for normal report
+     
+        STATE=${r[$i,11]/INACTIVE/INACTV}  # Shortened
+        [[ ${#PART}        -gt  8 ]] && PART="${PART:0:7}."
+        [[ ${#UAG_list[@]} -gt  0 ]] && UAG="A: ${UAG_list[@]}"  #should not be multiple Accts; but JIC
+        [[ ${#startime}    -gt 11 ]] && PART="${startime:-11}."
+     
+        [[ $found_user != yes ]] && [[ found_project != yes ]] &&  UAG="NOT YOUR RES."
+     
+      #  [[ $uses_grp_access != yes ]] && [[ $O == N ]] && ACCESS="[Usr: | Acct: ]"
+      #  [[ $uses_grp_access == yes ]] && [[ $O == N ]] && ACCESS="[Usr:|Acct:|G:]"
+      #  echo " RESERVATION_NAME  STATE PARTITION [START M-D h:m] [Wait:|Used:]  DURATION $ACCESS"
+            #         RN    ST PART   S  WUG  UAG
+             printf "%s %16.16s%7s%10s%15s%25s  %s\n" "$tab" \
+                      $RN  $STATE  $PART "$start_time" "$WAITorUSED_Duration" "$UAG"
+     fi
+
+   done
+   if [[ $O == T ]]; then  #Terse Report
+     if [[ ${#my_ress[@]}  == 0 ]]; then
+        echo "RESERVATIONS for you: NONE"
+     else
+        echo "RESERVATIONS  ${my_ress[@]} (scontrol show res for details)"
+     fi
+   fi
+
+exit 0

@@ -1,11 +1,16 @@
 #!/bin/bash
+
+
+[[ $# != 1 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
+[[ $1 == t ]] && O=T
+[[ $1 == v ]] && O=V
+
 space10='          '  tab=""
 host_name=`hostname -A`
 
 for sys in ls6 frontera stampede3 vista; do
   [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
 done
-echo TACC=$TACC_SYS
 
 if [[ $AT_TACC == yes ]]; then
   [[ $TACC_SYS == frontera  ]] && filesystems=(/home1 /work)
