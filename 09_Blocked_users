@@ -54,12 +54,15 @@ if [[ $AT_TACC == yes ]]; then
       exit 1
 
     else
+      [[ $O == T ]] &&
+      echo "QUEUES $USER has access to all queues."
+      [[ $O == N ]] || [[ $O == V ]] &&
       echo "QUEUES $USER has access to all queues (searched $filter_path)."
     fi 
   else
-    echo " NO \"ALL =\" line found in public queue acls."
+    echo " NO \"ALL =\" line found in public queue acl file."
     echo "$space Even if no user found, root is usually blocked."
-    echo "$space If job submission work, don't consider this a problem."
+    echo "$space If job submission works, don't consider this a problem."
     STATUS=3
   fi
 fi

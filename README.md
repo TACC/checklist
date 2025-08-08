@@ -87,6 +87,30 @@ the output lines up for the checklist reporting (e\.g\. for above):
                    It should have been installed in ~/apps.
 ```
 
+* BASH Template verbosity standard checklist options
+```
+#!/bin/bash
+        [[ $# != 1 ]] && O=N    #Command line options t=Terse,v=Verbose, default Normal
+        [[ $1 == t ]] && O=T 
+        [[ $1 == v ]] && O=V 
+
+         space='         '
+         $( ls $HOME/apps/my_app >/dev/null 2>&1 ) # check 4 my_app, no output
+         if [[ $? == 0 ]]; then
+           echo "APPS my_app is present on this system"      # message to checklist
+           exit 0                                            # return status
+         else
+           echo "APPS my_app is NOT present on this system." # message to checklist
+           [[ $O == N ]] || [[ $O == V ]] &&
+           echo "$space It should have been installed in \~/apps."
+           [[ $O == V ]] &&
+             echo "$space my_app is available at github.com/$USER/my_app."
+           exit 1                                            # return status
+         fi
+
+```
+
+
 #### References
 [Checklist](https://github.com/tacc/checklist)
 
