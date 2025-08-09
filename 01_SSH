@@ -14,7 +14,8 @@
   [[ $1 == t ]] && O=T
   [[ $1 == v ]] && O=V
 
-l_space='          '
+space10='          ' tab=$space10
+STATUS=0
 
 i=0
 pub_key_files=( id_ed25519.pub id_rsa.pub )
@@ -32,8 +33,13 @@ else   #determine key type
     fi
   done
 fi
- [[ ${#pub_keys[@]}  == 1 ]] && echo "$l_space Found public  key ${pub_keys[0]}" && pub_key=${pub_keys[0]}
- [[ ${#pub_keys[@]}  == 0 ]] && echo "$l_space Found NO public key (searched: ${pub_key_files[@]})" && exit 1
+ if [[ ${#pub_keys[@]}  == 1 ]]; then
+   if [[ $O == N ]] || [[ $O == V ]]; then
+    echo "$tab Found public  key ${pub_keys[0]}" && pub_key=${pub_keys[0]}
+   fi
+   [[ $O == T ]]  && T_string="Found public key ${pub_keys[0]}"
+ fi
+ [[ ${#pub_keys[@]}  == 0 ]] && echo "$tab Found NO public key (searched: ${pub_key_files[@]})" && exit 1
 #[[ ${#pub_keys[@]} -gt 1 ]] && echo " Found Multiple public key ${pub_keys[@]}." && exit 1
 
  pub_key=${pub_keys[0]}
@@ -41,11 +47,15 @@ priv_key=${pub_key%%.pub}
 
 output=`ls $HOME/.ssh/$priv_key`
 if [[ $? == 0 ]]; then
-  echo "$l_space Found private key $priv_key"
+   [[ $O == N ]] || [[ $O == V ]] && 
+     echo "$tab Found private key $priv_key"
+   [[ $O == T ]] && 
+     T_string="$T_string and private key $priv_key" 
 else
-  echo "$l_space Could NOT find private key $priv_key."; exit 1
+  echo "$tab Could NOT find private key $priv_key."; exit 1
 fi
 
+filenames=( .ssh $priv_key $pub_key authorized_keys )
 pathnames=( $HOME/.ssh $HOME/.ssh/$priv_key $HOME/.ssh/$pub_key $HOME/.ssh/authorized_keys )
  perms=(     drwx------ -rw-------           -rw-r--r--          -rw------- )
 #perms=(     .rwx------ .rw-------           .rw-r--r--          .rw------- ) #tests
@@ -62,6 +72,7 @@ check_perm(){
       perm=${CL_PERM-$2} 
    setperm=${CL_SETPERM-$1} 
 
+  local O=$4
   return_status=0
 
   stat_perm=`stat -c %A ${pathnames[$i]}`
@@ -73,21 +84,29 @@ check_perm(){
   
   
   if [[ $stat_perm == ${perms[$i]} ]]; then
-    printf "%s %-40s %s\n" "$l_space" "Permissions correct for $name:" "${perms[$i]}"
+    [[ $O == N ]] || [[ $O == V ]] &&
+    printf "%s %-40s %s\n" "$tab" "Permissions correct for $name:" "${perms[$i]}"
   else
     return_status=1
-    echo "$l_space FAILED Permissions on $short_pathname are incorrect."
-    echo "$l_space   Found:     $stat_perm permissions for $name"
-    echo "$l_space   Should be: ${perms[$i]}"
-    echo "$l_space   Execute:   chmod ${set_perms[$i]} $short_pathname"
+    echo "$tab FAILED Permissions on $short_pathname are incorrect."
+    echo "$tab   Found:     $stat_perm permissions for $name"
+    echo "$tab   Should be: ${perms[$i]}"
+    echo "$tab   Execute:   chmod ${set_perms[$i]} $short_pathname"
   fi
 
- #[[ $space == "" ]] && pass_space=$l_space #first time no space
-  space=$l_space #first time no space
+ #[[ $space == "" ]] && pass_space=$tab #first time no space
+  space=$tab #first time no space
+
 }
 
 for i in ${!pathnames[@]}; do
-   check_perm ${pathnames[$i]} ${perms[$i]} ${set_perms[$i]}
+   check_perm ${pathnames[$i]} ${perms[$i]} ${set_perms[$i]} $O
+   [[ $return_status != 0 ]] && STATUS=$return_status
 done
 
-exit $return_status
+if [[ $O == T ]] && [[ $STATUS == 0 ]]; then
+   echo "$tab $T_string" 
+   echo "$tab Permissions OK for: ${filenames[@]}" 
+fi
+
+exit $STATUS
