@@ -11,6 +11,10 @@
 # 
 # END COMMENTS -- Do Not Remove, Alter or Duplicate
 #-----
+USAGE=" $0 [t|v]  #terse|verbose"
+
+#Command line options t=terse,v=verbose, default normal
+[[ $# == 1 ]] && [[ $1 != t ]] && [[ $1 != v ]] &&  echo "$USAGE" && exit 1
 
 RED="\033[0;31m"
 MAG="\033[0;34m"
@@ -42,7 +46,7 @@ for check in ${clist[@]}; do
   fi
 
   NO=${check%%_*}       # Get prefix sequence number (e.g. prefix number of 01_SSH)
-  [[ $USE == scripts   ]] && output=`$CL_DIR/$check` && status=$?
+  [[ $USE == scripts   ]] && output=`$CL_DIR/$check $1` && status=$?
   [[ $USE == functions ]] && output=$($check)           && status=$? #function option
 #output=$( ${list[@]} )
 
