@@ -38,6 +38,10 @@ if [[ $AT_TACC == yes ]]; then
       echo "PROJECTS found (IDs ${projects[@]}, repectively): "
       tab=$space10
     fi
+    if [[ $O == T ]] ; then
+      echo "PROJECTS of user $USER."
+      tab=$space10
+    fi
   else
     echo "No Projects found for user $user."
     exit 1

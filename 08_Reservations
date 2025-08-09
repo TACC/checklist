@@ -270,9 +270,13 @@ fi
    done
    if [[ $O == T ]]; then  #Terse Report
      if [[ ${#my_ress[@]}  == 0 ]]; then
-        echo "RESERVATIONS for you: NONE"
+        echo "RESERVATIONS for you:"
+        tab=$space10
+        echo "$tab NONE"
      else
-        echo "RESERVATIONS  ${my_ress[@]} (scontrol show res for details)"
+        echo "RESERVATIONS"  
+        tab=$space10
+        echo "$tab ${my_ress[@]} (scontrol show res for details)"
      fi
    fi
 

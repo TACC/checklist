@@ -51,10 +51,21 @@ for check in ${clist[@]}; do
   [[ $USE == functions ]] && output=$($check $1)        && status=$? #function option
 #output=$( ${list[@]} )
 
+  STRING1=$( echo $output | sed -n 1p | awk '{print $1}')
+
   if [[ $status == 0 ]]; then
+    # word1=$( echo $output | sed -n 1p | awk '{print $1}')
+      line1=$( head -1    <<< $output)
+      lines=$( tail -n +2 <<< $output)
+    # line1=$(sed 's/'$word1'/\\e[0;36;1m'$word1'\\e[0m/' <<< $line1)
+
       printf "${CYAN}PASSED${RESET}"
-      printf " %3s %s\n" $NO "$output"
+      printf " %3s "  "$NO"
+    # printf "$line1\n"
+      printf "${CYAN}$line1${RESET}\n"
+      printf "%s\n"  "$lines"
   else
+    # output=$(sed 's/'$STRING1'/\\e[0;31;1m'$STRING1'\\e[0m/' <<< $output)
       echo ""           # Space failures out and colorize them
       printf ${RED}FAILED${RESET}
       printf " %3s" $NO
@@ -63,3 +74,8 @@ for check in ${clist[@]}; do
   fi
 
 done
+#STRING1=$( echo $output | sed -n 1p | awk '{print $1}')
+#[[ $status == 0 ]] && output=$(sed 's/'$STRING1'/\\e[0;36;1m'$STRING1'\\e[0m/' <<< $output)
+#[[ $status == 1 ]] && output=$(sed 's/'$STRING1'/\\e[0;31;1m'$STRING1'\\e[0m/' <<< $output)
+#[[ $status == 2 ]] && output=$(sed 's/'$STRING1'/\\e[0;34;1m'$STRING1'\\e[0m/' <<< $output)
+
