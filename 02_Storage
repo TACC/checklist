@@ -25,7 +25,7 @@ TACC_SYS=stampede
 
 if [[ $AT_TACC == yes ]]; then
    USER_STORAGE_DIRS=( HOME  SCRATCH WORK  STOCKYARD )
-  USER_STORAGE_PERMS=( drwx  drwx    drwxr drwx     )
+  USER_STORAGE_PERMS=( drwx  drwx    drwx  drwx     )
   CRITICAL_STORAGE_DIRS=( HOME )
 
  #echo "STORAGE Environment Variable Definition & Directory Perms." 
@@ -36,17 +36,28 @@ if [[ $AT_TACC == yes ]]; then
   for i in ${!USER_STORAGE_DIRS[@]}; do
       user_dir=${USER_STORAGE_DIRS[$i]}
       if [[ ! -z ${!user_dir} ]]; then
+         [[ $O == N ]] || [[ $O == V ]] &&
          printf "%s %-9s Variable  is defined.\n" "$tab" $user_dir
          found_pathnames+=(${!user_dir})
          found_storage_dirs+=($user_dir)
          found_storage_perms+=(${USER_STORAGE_PERMS[@]})
+
+         defined+=($user_dir)
       else
+         [[ $O == N ]] || [[ $O == V ]] &&
          printf "%s %-9s Variable NOT defined.\n" "$tab" $user_dir
         #[[ $STATUS != 1 ]] && STATUS=3  #  retain critical status
         #[[ ${CRITICAL_STORAGE_DIRS[@]} =~ $user_dir ]] && STATUS=1
          STATUS=1
+
+         undefined+=($user_dir)
       fi  
   done
+  if [[ $O == T ]]; then 
+    [[ ${#defined[@]}   -gt 0 ]] &&   def_part="DEFINED Vars: ${defined[@]}"
+    [[ ${#undefined[@]} -gt 0 ]] && undef_part="UNDEFINED Vars: ${unfined[@]}"
+    echo "$tab ${undef_part}$def_part"
+  fi
 
   if [[ ${#found_storage_dirs[@]} == 0 ]]; then
     echo "$tab None of the following User Storage Variables are defined:"
@@ -61,15 +72,23 @@ if [[ $AT_TACC == yes ]]; then
        stat_perm=`stat -c %A ${found_pathnames[$i]}`
        status=$? 
        if [[ $stat_perm =~ ^${found_storage_perms[$i]} ]]; then
+          [[ $O == N ]] || [[ $O == V ]] &&
           printf "%s %-9s directory USER permissions are valid (%s)..\n" \
                  "$tab" $user_dir ${found_storage_perms[$i]}
+          valid+=($user_dir)
        else
+          [[ $O == N ]] || [[ $O == V ]] &&
           printf "%s %-9s directory USER permissions (%s) NOT valid (required: %s).\n" \
                  "$tab" $user_dir $stat_perm ${found_storage_perms[$i]}
           STATUS=1
+          invalid+=($user_dir)
       fi  
     done
-  
+  fi
+  if [[ $O == T ]]; then 
+    [[ ${#valid[@]}   -gt 0 ]] &&   val_part="VALID Perms: ${valid[@]}"
+    [[ ${#invalid[@]} -gt 0 ]] && inval_part="INVALID Perms: ${invalid[@]} "
+    echo "$tab ${inval_part}$val_part"
   fi
 
   # test writing/reading from USER directories (that mount is correct)
@@ -81,4 +100,4 @@ if [[ $AT_TACC == yes ]]; then
   fi
 fi
 
-  exit $STATUS
+exit $STATUS
