@@ -16,8 +16,9 @@ USAGE=" $0 [t|v]  #terse|verbose"
 #Command line options t=terse,v=verbose, default normal
 [[ $# == 1 ]] && [[ $1 != t ]] && [[ $1 != v ]] &&  echo "$USAGE" && exit 1
 
-RED="\033[0;31m"
-MAG="\033[0;34m"
+  RED="\033[0;31m"
+  MAG="\033[0;34m"
+ CYAN="\033[0;36m"
 RESET="\033[0m"
 #Black: 30, Red: 31, Green: 32, Yellow: 33, Blue: 34, Magenta: 35, Cyan: 36, and White: 37.
 
@@ -47,11 +48,11 @@ for check in ${clist[@]}; do
 
   NO=${check%%_*}       # Get prefix sequence number (e.g. prefix number of 01_SSH)
   [[ $USE == scripts   ]] && output=`$CL_DIR/$check $1` && status=$?
-  [[ $USE == functions ]] && output=$($check)           && status=$? #function option
+  [[ $USE == functions ]] && output=$($check $1)        && status=$? #function option
 #output=$( ${list[@]} )
 
   if [[ $status == 0 ]]; then
-      printf "PASSED"
+      printf "${CYAN}PASSED${RESET}"
       printf " %3s %s\n" $NO "$output"
   else
       echo ""           # Space failures out and colorize them
