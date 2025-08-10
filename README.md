@@ -15,7 +15,7 @@ the prefix number in the module name (01_SSH, <##>_<whatever>)
 * The checklist cmd and modules appear in the same directory as:
 
 ```
-         checklist 01_SSH, 02_xxx, 03_xxx.
+         checklist 01_SSH  02_Storage  0#_<check_item>.
 ```
 
 #### Checklist Operation:
@@ -23,6 +23,8 @@ the prefix number in the module name (01_SSH, <##>_<whatever>)
 * Load checklist module and execute `checklist`:
 
 ```
+         $ checklist    # Maybe  system-installed in /usr/bin
+         $            
          $ module load checklist
          $ checklist
 ```
@@ -36,11 +38,17 @@ From these two pieces of information, checklist outputs:
          PASS|FAIL|WARN  ##  <message(s)>
 
          (e.g.)
-         PASS  01  SSH permissions and keys OK.
+          $checklist t   #terse mode
+          [PASS] 01 SSH setup
+                    Found public key id_ed25519.pub and ...
+                    Permissions OK for: .ssh id_ed25519 ...
+                
 ```
-> where <message(s)> gives a terse description of the check,
-and relevant information.
+> where <message(s)> is output from 02_SSH scripts:
+a one line terse description of the check, and other
+lines with relevant checking details.
 Checks that FAIL include diagnostic information.
+Checks that provide WARNings may also provide diagnostic information.
 
 #### User Check List
 * Users can include their own checks in a directory, with
@@ -51,30 +59,35 @@ When checklist is run, it executes the user modules and
 reports on the returned values after completing 
 the system-wide modules. 
 
-* Directory location of your checklist module commands should be exported (in a startup script--  ~/.profile, etc.).  If modules located in $HOME/apps/checklist, the use:
+* Directory location of your checklist module commands should be exported (in a startup script--  ~/.profile, etc.).  If modules located in $HOME/apps/checklist, then use:
   
 ```
          $ export CL_USER_DIR=$HOME/apps/checklist
 ```
 
 * The following is a template for a user module. The module can be an executable
-can be in any language, but must supply an exit status (return
-in C, exit in SHELL) value for the bash `checklist` command to capture (with \"$?\"), and writes a message to stdout).
+in any language, but must supply an exit status (return
+in C, exit in SHELL) value for the bash `checklist` command to capture 
+(with \"$?\"), and writes a message to stdout).
 
 * BASH Template
 ```
          $ cat $CL_USER_DIR/01_APPS
 
          #!/bin/bash
-         space='         '
-         $( ls $HOME/apps/my_app >/dev/null 2>&1 ) # check 4 my_app, no output
+         tab='          ' #always prefix output lines with tab after 1st line.
+
+         echo "APPS checking for my_app in \$PATH" # 1-line general terse description 
+
+         $( type my_app >/dev/null 2>&1 ) # check 4 my_app, no output
          if [[ $? == 0 ]]; then
-           echo "APPS my_app is present on this system"      # message to checklist
-           exit 0                                            # return status
+           echo "$tab my_app is present."          # message and status (0=PASS)
+           exit 0                                  
          else
-           echo "APPS my_app is NOT present on this system." # message to checklist
-           echo "$space It should have been installed in \~/apps."
-           exit 1                                            # return status
+           echo "$tab my_app is NOT present (check uses \"type\" cmd)."
+           echo "$tab Check \$PATH variable."
+           echo "$tab Acquire from https/github.com/$USER/my_app."
+           exit 1                                            # status (1=FAIL)
          fi
 ```
 
@@ -83,8 +96,10 @@ in C, exit in SHELL) value for the bash `checklist` command to capture (with \"$
 the output lines up for the checklist reporting (e\.g\. for above):
        
 ```
-         FAILED 01 APPS my_app is NOT present on this system.
-                   It should have been installed in ~/apps.
+         [FAIL] 01 APPS checking for my_app in $PATH."
+                   my_app is NOT present (check uses "type" cmd).
+                   Check $PATH variable.
+                   Acquire from https/github.com/>username>/my_app."
 ```
 
 * BASH Template verbosity standard checklist options
@@ -95,16 +110,18 @@ the output lines up for the checklist reporting (e\.g\. for above):
         [[ $1 == v ]] && O=V 
 
          space='         '
-         $( ls $HOME/apps/my_app >/dev/null 2>&1 ) # check 4 my_app, no output
+         $( type my_app >/dev/null 2>&1 ) # check 4 my_app, no output
          if [[ $? == 0 ]]; then
-           echo "APPS my_app is present on this system"      # message to checklist
-           exit 0                                            # return status
+           echo "$tab my_app is present."          # message and status (0=PASS)
+           exit 0                                  
          else
-           echo "APPS my_app is NOT present on this system." # message to checklist
+           [[ $O == T ]]  &&
+             echo "$tab my_app was NOT FOUND."
            [[ $O == N ]] || [[ $O == V ]] &&
-           echo "$space It should have been installed in \~/apps."
+             echo "$tab my_app was NOT FOUND by \"type\"." &&
+             echo "$tab Check \$PATH variable or default module setup."
            [[ $O == V ]] &&
-             echo "$space my_app is available at github.com/$USER/my_app."
+             echo "$tab Acquire from https/github.com/$USER/my_app."
            exit 1                                            # return status
          fi
 

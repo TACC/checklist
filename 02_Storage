@@ -99,6 +99,4 @@ if [[ $AT_TACC == yes ]]; then
 
   fi
 fi
-
-STATUS=3
 exit $STATUS
