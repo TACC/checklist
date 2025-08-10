@@ -55,7 +55,7 @@ if [[ $AT_TACC == yes ]]; then
   done
   if [[ $O == T ]]; then 
     [[ ${#defined[@]}   -gt 0 ]] &&   def_part="DEFINED Vars: ${defined[@]}"
-    [[ ${#undefined[@]} -gt 0 ]] && undef_part="UNDEFINED Vars: ${unfined[@]}"
+    [[ ${#undefined[@]} -gt 0 ]] && undef_part="UNDEFINED VARS: ${undefined[@]} - "
     echo "$tab ${undef_part}$def_part"
   fi
 
@@ -87,7 +87,7 @@ if [[ $AT_TACC == yes ]]; then
   fi
   if [[ $O == T ]]; then 
     [[ ${#valid[@]}   -gt 0 ]] &&   val_part="VALID Perms: ${valid[@]}"
-    [[ ${#invalid[@]} -gt 0 ]] && inval_part="INVALID Perms: ${invalid[@]} "
+    [[ ${#invalid[@]} -gt 0 ]] && inval_part="INVALID PERMS: ${invalid[@]} - "
     echo "$tab ${inval_part}$val_part"
   fi
 
@@ -100,4 +100,5 @@ if [[ $AT_TACC == yes ]]; then
   fi
 fi
 
+STATUS=3
 exit $STATUS

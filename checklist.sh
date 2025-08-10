@@ -19,6 +19,12 @@ USAGE=" $0 [t|v]  #terse|verbose"
   RED="\033[0;31m"
   MAG="\033[0;34m"
  CYAN="\033[0;36m"
+ GRNB="\033[1;32m"
+  GRN="\033[0;32m"
+ REDB="\033[1;31m"
+  RED="\033[0;35m"
+ GLDB="\033[1;33m"
+  GLD="\033[0;33m"
 RESET="\033[0m"
 #Black: 30, Red: 31, Green: 32, Yellow: 33, Blue: 34, Magenta: 35, Cyan: 36, and White: 37.
 
@@ -47,30 +53,39 @@ for check in ${clist[@]}; do
   fi
 
   NO=${check%%_*}       # Get prefix sequence number (e.g. prefix number of 01_SSH)
-  [[ $USE == scripts   ]] && output=`$CL_DIR/$check $1` && status=$?
+# [[ $USE == scripts   ]] && output=`$CL_DIR/$check $1` && status=$?
   [[ $USE == functions ]] && output=$($check $1)        && status=$? #function option
+
+  if [[ $USE == scripts   ]]; then
+    output=`$CL_DIR/$check $1` 
+    status=$?
+  fi
 #output=$( ${list[@]} )
 
   STRING1=$( echo $output | sed -n 1p | awk '{print $1}')
 
-  if [[ $status == 0 ]]; then
+    # For highlighting first word, then remove color around line1 in printf
     # word1=$( echo $output | sed -n 1p | awk '{print $1}')
+    # line1=$(sed 's/'$word1'/\\e[0;36;1m'$word1'\\e[0m/' <<< $line1)
       line1=$( head -1    <<< $output)
       lines=$( tail -n +2 <<< $output)
-    # line1=$(sed 's/'$word1'/\\e[0;36;1m'$word1'\\e[0m/' <<< $line1)
 
-      printf "${CYAN}PASSED${RESET}"
-      printf " %3s "  "$NO"
-    # printf "$line1\n"
-      printf "${CYAN}$line1${RESET}\n"
+  if [[ $status == 0 ]]; then
+      printf " [${GRNB}PASS${RESET}]"
+      printf " %2s "  "$NO"
+      printf "${GRN}$line1${RESET}\n"
       printf "%s\n"  "$lines"
-  else
-    # output=$(sed 's/'$STRING1'/\\e[0;31;1m'$STRING1'\\e[0m/' <<< $output)
+  elif [[  $status == 1 ]]; then
       echo ""           # Space failures out and colorize them
-      printf ${RED}FAILED${RESET}
-      printf " %3s" $NO
-      printf " ${MAG}$output${RESET}"
-      echo ""
+      printf " [${REDB}FAIL${RESET}]"
+      printf " %2s" $NO
+      printf " ${GRN}$line1${RESET}\n"
+      printf "${RED}$lines${RESET}\n"
+  else
+      printf " [${GLDB}WARN${RESET}]"
+      printf " %2s" $NO
+      printf " ${GRN}$line1${RESET}\n"
+      printf "${GLD}$lines${RESET}\n"
   fi
 
 done

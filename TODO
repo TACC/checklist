@@ -1,7 +1,7 @@
 
-1.) Finish verbosity in scripts.
-2.) Check Failure Verbosity
-3.) Configure for Warnings
-4.) Maybe first word colorize in output.
+- [ ] 1.) Finish verbosity in scripts.
+- [ ] 2.) Check Failure Verbosity
+- [x] 3.) Configure for Warnings
+- [ ] 4.) Maybe first word colorize in output.
 
 02_Storage check for ability to create files in DIRS.
