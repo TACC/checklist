@@ -13,7 +13,6 @@
 [[ $1 == t ]] && O=T 
 [[ $1 == v ]] && O=V 
 
-space='          '  tab=""
 STATUS=0
 
 host_name=`hostname -A`
@@ -50,21 +49,21 @@ if [[ $AT_TACC == yes ]]; then
       status=$?
 
       [[ $status != 0 ]] && message="No message (reason) for blocking was included in the filter."
-      echo "$space $message"
+      echo " $message"
       exit 1
 
     else
       [[ $O == T ]] &&
         echo "BLOCKED QUEUE ACCESS"  &&
-        echo "$space User $USER has access to all queues."
+        echo " User $USER has access to all queues."
       [[ $O == N ]] || [[ $O == V ]] &&
         echo "BLOCKED QUEUE ACCESS"  &&
-        echo "$tab $USER has access to all queues (searched $filter_path)."
+        echo " $USER has access to all queues (searched $filter_path)."
     fi 
   else
     echo " NO \"ALL =\" line found in public queue acl file."
-    echo "$space Even if no user found, root is usually blocked."
-    echo "$space If job submission works, don't consider this a problem."
+    echo " Even if no user found, root is usually blocked."
+    echo " If job submission works, don't consider this a problem."
     STATUS=3
   fi
 fi

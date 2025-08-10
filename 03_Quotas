@@ -5,7 +5,6 @@
 [[ $1 == t ]] && O=T
 [[ $1 == v ]] && O=V
 
-space10='          '  tab=""
 host_name=`hostname -A`
 
 for sys in ls6 frontera stampede3 vista; do
@@ -34,7 +33,6 @@ fi
 local_disks=(/tmp)
 if [[ $OS == Darwin ]]; then                #Uses a single df for space and inode
   echo "STORAGE QUOTAS"
-  tab=$space10
 
   for file_sys in ${local_disks[@]}; do
     df_flds=(`df $df_opts $file_sys | tail -n 1`)
@@ -43,17 +41,15 @@ if [[ $OS == Darwin ]]; then                #Uses a single df for space and inod
     inode_used_no=${df_flds[7]%\%}
   
     [[ $((100-space_used_no)) -lt 11 ]] || [[ $((100-inode_used_no)) -lt 11 ]] &&
-    echo "$tab WARNING: space or inode availability low on $file_sys" 
+    echo " WARNING: space or inode availability low on $file_sys" 
   
-    printf "%s %-8s [SPACE: %4s%% available of %4sGB]  [INODES: %4s%% free (%7s)]\n" \
-         "$tab" \
+    printf " %-8s [SPACE: %4s%% available of %4sGB]  [INODES: %4s%% free (%7s)]\n" \
          $file_sys $((100-space_used_no)) ${df_flds[1]} \
                    $((100-inode_used_no)) ${df_flds[6]}
   done
 
 elif [[ $OS == Linux ]]; then                       # requires executing 2 df's: space and inodes
   echo "STORAGE QUOTAS"
-  tab=$space10
 
   for file_sys in ${local_disks[@]}; do
     df_space_flds=(`df    $df_opts $file_sys | tail -n 1`)
@@ -63,18 +59,17 @@ elif [[ $OS == Linux ]]; then                       # requires executing 2 df's:
     inode_used_no=${df_inode_flds[4]%\%}
   
     [[ $((100-space_used_no)) -lt 11 ]] || [[ $((100-inode_used_no)) -lt 11 ]] &&
-    echo "$tab WARNING: space or inode availability low on $file_sys" 
+    echo " WARNING: space or inode availability low on $file_sys" 
   
 #   printf "%-8s [SPACE: %4s%% available of %4sGB]  [INODES: %4s%% free (%7s)]\n" \
-    printf "%s %-8s [SPACE: %4s%% available of %4s]  [INODES: %4s%% free (%7s)]\n" \
-           "$tab" \
+    printf " %-8s [SPACE: %4s%% available of %4s]  [INODES: %4s%% free (%7s)]\n" \
            $file_sys $((100-space_used_no)) ${df_space_flds[1]} \
                      $((100-inode_used_no)) ${df_inode_flds[1]}
   done
 fi
 
 if [[ $AT_TACC == yes ]]; then
-  tab=$space10
+
   for fs in ${filesystems[@]}; do
     do_cmd=lfs
     [[ $fs =~ home1 ]] && [[ $TACC_SYS == vista     ]] && do_cmd=quota
@@ -100,10 +95,9 @@ if [[ $AT_TACC == yes ]]; then
 
       #first time write header
       [[ ${filesystems[0]} == $fs ]] && \
-      echo "$tab Disk         Usage (GB)     Limit    %Used   File Count      Limit  %Used "
+      echo " Disk         Usage (GB)     Limit    %Used   File Count      Limit  %Used "
 
-      printf  "%s %-13s %9s %9s %8s %12s %10s %6s\n" \
-              "$tab" \
+      printf  " %-13s %9s %9s %8s %12s %10s %6s\n" \
                ${common_out[0]} \
                ${common_out[1]} ${common_out[3]} $percent_used_space \
                ${common_out[5]} ${common_out[7]} $percent_used_inode
@@ -126,9 +120,8 @@ if [[ $AT_TACC == yes ]]; then
         common_out[7]="-"
       fi
 
-      echo "$tab Disk         Usage (GB)     Limit    %Used   File Count      Limit  %Used "
-      printf  "%s %-13s %9s %9s %8s %12s %10s %6s\n" \
-              "$tab" \
+      echo " Disk         Usage (GB)     Limit    %Used   File Count      Limit  %Used "
+      printf  " %-13s %9s %9s %8s %12s %10s %6s\n" \
                ${common_out[0]} \
                ${common_out[1]} ${common_out[3]} $percent_used_space \
                ${common_out[5]} ${common_out[7]} $percent_used_inode

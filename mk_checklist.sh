@@ -20,9 +20,8 @@ if [[ $# -ne 1 ]]; then
 fi
 
 [[ $1 == scripts   ]] && cp checklist.sh checklist && echo "Copied checklist.sh to checklist." && exit 0
-[[ $1 == functions ]] && cp checklist.sh functions
 [[ $1 != functions ]] && [[ $1 != scripts ]] && \
-    echo " Error: did not understand $0 $1" && echo "$USAGE"
+    echo " Error: did not understand $0 $1" && echo "$USAGE" && exit 1
 
        base_file=checklist.sh
   functions_file=checklist.shf

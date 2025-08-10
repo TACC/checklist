@@ -75,18 +75,17 @@ in C, exit in SHELL) value for the bash `checklist` command to capture
          $ cat $CL_USER_DIR/01_APPS
 
          #!/bin/bash
-         tab='          ' #always prefix output lines with tab after 1st line.
 
-         echo "APPS checking for my_app in \$PATH" # 1-line general terse description 
+         echo "APPS checking for my_app in \$PATH"  # line 1 general description
 
-         $( type my_app >/dev/null 2>&1 ) # check 4 my_app, no output
+         $( type my_app >/dev/null 2>&1 )           # check 4 my_app, no output
          if [[ $? == 0 ]]; then
-           echo "$tab my_app is present."          # message and status (0=PASS)
+           echo " my_app is present."               # message & status (0=PASS)
            exit 0                                  
          else
-           echo "$tab my_app is NOT present (check uses \"type\" cmd)."
-           echo "$tab Check \$PATH variable."
-           echo "$tab Acquire from https/github.com/$USER/my_app."
+           echo " my_app is NOT present (check uses \"type\" cmd)."
+           echo " Check \$PATH variable."
+           echo " Acquire from https/github.com/$USER/my_app."
            exit 1                                            # status (1=FAIL)
          fi
 ```
@@ -109,20 +108,19 @@ the output lines up for the checklist reporting (e\.g\. for above):
         [[ $1 == t ]] && O=T 
         [[ $1 == v ]] && O=V 
 
-         space='         '
          $( type my_app >/dev/null 2>&1 ) # check 4 my_app, no output
          if [[ $? == 0 ]]; then
-           echo "$tab my_app is present."          # message and status (0=PASS)
-           exit 0                                  
+           echo " my_app is present."        # message and status (0=PASS)
+           exit 0                            #return status       
          else
-           [[ $O == T ]]  &&
-             echo "$tab my_app was NOT FOUND."
-           [[ $O == N ]] || [[ $O == V ]] &&
-             echo "$tab my_app was NOT FOUND by \"type\"." &&
-             echo "$tab Check \$PATH variable or default module setup."
-           [[ $O == V ]] &&
-             echo "$tab Acquire from https/github.com/$USER/my_app."
-           exit 1                                            # return status
+           [[ $O == T ]]  &&                               # terse
+             echo " my_app was NOT FOUND."
+           [[ $O == N ]] || [[ $O == V ]] &&               # normal or verbose
+             echo " my_app was NOT FOUND by \"type\"." && 
+             echo " Check \$PATH variable or default module setup."
+           [[ $O == V ]] &&                                #verbose
+             echo " Acquire from https//:github.com/$USER/my_app."
+           exit 1                                          # return status
          fi
 
 ```

@@ -25,8 +25,6 @@
   [[ $1 == t ]] && O=T
   [[ $1 == v ]] && O=V
 
-  space10='          '  tab=""
-
   host_name=`hostname -A`
   for sys in frontera vista stampede ls6; do
     [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
@@ -178,13 +176,11 @@ fi
    if [[ $nres -ne 0 ]]; then
       if [[ $O == V ]]; then
         echo "RESERVATIONS for All users."
-        tab=$space10
-        echo "$tab RESERVATION_NAME    STATE   PARTITION NODES [START  M-D h:m] [Wait:|Used:]  DURATION [Usr:|Acct:|Grp]"
+        echo " RESERVATION_NAME    STATE   PARTITION NODES [START  M-D h:m] [Wait:|Used:]  DURATION [Usr:|Acct:|Grp]"
       fi
       if [[ $O == N ]]; then
         echo "RESERVATIONS for $USER or projects of user."
-        tab=$space10
-        echo "$tab RESERVATION_NAME  STATE PARTITION [START M-D h:m] [Wait:|Used:]  DURATION [Usr:|Acct:|G:]"
+        echo " RESERVATION_NAME  STATE PARTITION [START M-D h:m] [Wait:|Used:]  DURATION [Usr:|Acct:|G:]"
       fi
    fi
    [[ $nres -eq 0 ]] &&
@@ -229,7 +225,7 @@ fi
 
      if [[ $O == V ]]; then  #Normal report size
             #         RN    ST PART  N   S  WUG  UAG
-             printf "%s %16.16s%9s%12s%6s%16s%25s  %s\n" "$tab" \
+             printf " %16.16s%9s%12s%6s%16s%25s  %s\n" \
                       $RN    ${r[$i,11]} $PART      ${r[$i,5]} "$start_time" "$WAITorUSED_Duration" "$UAG"
                  #    $RN    ${r[$i,11]} $PART      ${r[$i,3]} "$start_time" "$WAITorUSED_Duration" "$UAG"
                  #${r[$i,0]} ${r[$i,11]} $PART      ${r[$i,3]} "$start_time" "$WAITorUSED_Duration" "$UAG"
@@ -263,7 +259,7 @@ fi
       #  [[ $uses_grp_access == yes ]] && [[ $O == N ]] && ACCESS="[Usr:|Acct:|G:]"
       #  echo " RESERVATION_NAME  STATE PARTITION [START M-D h:m] [Wait:|Used:]  DURATION $ACCESS"
             #         RN    ST PART   S  WUG  UAG
-             printf "%s %16.16s%7s%10s%15s%25s  %s\n" "$tab" \
+             printf " %16.16s%7s%10s%15s%25s  %s\n" \
                       $RN  $STATE  $PART "$start_time" "$WAITorUSED_Duration" "$UAG"
      fi
 
@@ -271,12 +267,10 @@ fi
    if [[ $O == T ]]; then  #Terse Report
      if [[ ${#my_ress[@]}  == 0 ]]; then
         echo "RESERVATIONS for you:"
-        tab=$space10
-        echo "$tab NONE"
+        echo " NONE"
      else
         echo "RESERVATIONS"  
-        tab=$space10
-        echo "$tab ${my_ress[@]} (scontrol show res for details)"
+        echo " ${my_ress[@]} (scontrol show res for details)"
      fi
    fi
 

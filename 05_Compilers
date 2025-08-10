@@ -13,7 +13,6 @@
 [[ $1 == t ]] && O=T 
 [[ $1 == v ]] && O=V 
 
-space='          ' tab=""
 STATUS=0
 
 host_name=`hostname -A`
@@ -33,7 +32,6 @@ sets[oneAPI]="icx icpx ifx"
 
 #Check for all known compilers
 echo "COMPILERS Searching Compiler Families (${compiler_families[@]})"
-tab=$space
 
 for family in ${compiler_families[@]}; do
   set=( ${sets[$family]} )
@@ -49,16 +47,16 @@ for family in ${compiler_families[@]}; do
     flat_set="${set[@]}"
   if [[ ${#found[@]} == 0 ]]; then
      if [[ $O == V ]]; then
-       printf "%s %-6s family NOT AVAILABLE in present module environment.\n" "$tab" $family
-       [[ $family == gcc ]] && printf "%s       family is required!\n" "$tab" && STATUS=1
+       printf " %-6s family NOT AVAILABLE in present module environment.\n" $family
+       [[ $family == gcc ]] && printf "       family is required!\n"  && STATUS=1
      fi
      [[ $family == gcc ]] && found_gcc_family=no
   fi
 
   if [[ ${#found[@]} == 1 ]] || [[ ${#found[@]} == 2 ]]; then
      if [[ $O == N ]] || [[ $O == V ]]; then
-       printf "%s %-6s family SUBSET AVAILABLE in present module environment (%s).\n"  "$tab"  $family  "$flat_found"
-       [[ $family == gcc ]] && printf "%s       Complete family is required!\n" "$tab" "$flat_set"  && STATUS=1
+       printf " %-6s family SUBSET AVAILABLE in present module environment (%s).\n"  $family  "$flat_found"
+       [[ $family == gcc ]] && printf "       Complete family is required!\n" "$flat_set"  && STATUS=1
      fi
      [[ $family == gcc ]] && found_gcc_subset=yes && gcc_subset=($flat_found)
      found_subsets+=("${family}: $flat_found")
@@ -66,7 +64,7 @@ for family in ${compiler_families[@]}; do
 
   if [[ ${#found[@]} == 3 ]] || [[ ${#found[@]} == 1 ]]; then
      if [[ $O == N ]] || [[ $O == V ]]; then
-       printf '%s %-6s family in present module environment (%s).\n'  "$tab"  $family  "$flat_found"
+       printf ' %-6s family in present module environment (%s).\n' $family  "$flat_found"
      fi
      found_all_3+=("${family}: $flat_found") 
   fi
@@ -74,23 +72,23 @@ for family in ${compiler_families[@]}; do
   if [[ ${compiler_families[-1]} == $family ]]; then
     if [[ $O == T ]]; then
       if [[ ${#found_subsets[@]} == 0 ]] && [[ ${#found_all_3[@]} == 0 ]];  then
-        echo "$tab COMPILERS NONE FOUND (searched ${compiler_families[@]})"
+        echo " COMPILERS NONE FOUND (searched ${compiler_families[@]})"
         exit 1
       fi
       if [[ $found_gcc_family == no ]]; then
-        echo "$tab COMPILERS GCC compilers not present."
+        echo " COMPILERS GCC compilers not present."
         exit 1
       fi
       if [[ $found_gcc_subset == yes ]]; then
-        echo "$tab COMPILERS Only subset of GCC compilers found ($gcc_subset)."
+        echo " COMPILERS Only subset of GCC compilers found ($gcc_subset)."
         exit 1
       fi
       if [[ ${#found_all_3[@]} == 0 ]]; then
-        echo "$tab COMPILERS No complete complier set found. (Incomplete sets: ${found_subsets[@]})"
+        echo " COMPILERS No complete complier set found. (Incomplete sets: ${found_subsets[@]})"
         exit 1
       fi
       [[ ${#found_subsets[@]} -gt 0 ]] && FSETS="${found_subsets[@]}" && echo HERE9
-      echo "$tab COMPILERS ${found_all_3[@]} $FSETS" #(subsets: ${found_subsets[@]})
+      echo " COMPILERS ${found_all_3[@]} $FSETS" #(subsets: ${found_subsets[@]})
     fi 
   fi
 

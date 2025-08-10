@@ -69,6 +69,7 @@ for check in ${clist[@]}; do
     # line1=$(sed 's/'$word1'/\\e[0;36;1m'$word1'\\e[0m/' <<< $line1)
       line1=$( head -1    <<< $output)
       lines=$( tail -n +2 <<< $output)
+      lines=$(sed 's/^/          /' <<< $lines)
 
   if [[ $status == 0 ]]; then
       printf " [${GRNB}PASS${RESET}]"

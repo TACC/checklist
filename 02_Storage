@@ -14,7 +14,6 @@
 [[ $1 == t ]] && O=T
 [[ $1 == v ]] && O=V
 
-space10='          '
 STATUS=0
 
 host_name=`hostname -A`
@@ -30,14 +29,13 @@ if [[ $AT_TACC == yes ]]; then
 
  #echo "STORAGE Environment Variable Definition & Directory Perms." 
   echo "STORAGE ENV VARS & PERMS"
-  tab=$space10
 
   # Determine if variables are defined
   for i in ${!USER_STORAGE_DIRS[@]}; do
       user_dir=${USER_STORAGE_DIRS[$i]}
       if [[ ! -z ${!user_dir} ]]; then
          [[ $O == N ]] || [[ $O == V ]] &&
-         printf "%s %-9s Variable  is defined.\n" "$tab" $user_dir
+         printf " %-9s Variable  is defined.\n" $user_dir
          found_pathnames+=(${!user_dir})
          found_storage_dirs+=($user_dir)
          found_storage_perms+=(${USER_STORAGE_PERMS[@]})
@@ -45,7 +43,7 @@ if [[ $AT_TACC == yes ]]; then
          defined+=($user_dir)
       else
          [[ $O == N ]] || [[ $O == V ]] &&
-         printf "%s %-9s Variable NOT defined.\n" "$tab" $user_dir
+         printf " %-9s Variable NOT defined.\n" $user_dir
         #[[ $STATUS != 1 ]] && STATUS=3  #  retain critical status
         #[[ ${CRITICAL_STORAGE_DIRS[@]} =~ $user_dir ]] && STATUS=1
          STATUS=1
@@ -56,12 +54,12 @@ if [[ $AT_TACC == yes ]]; then
   if [[ $O == T ]]; then 
     [[ ${#defined[@]}   -gt 0 ]] &&   def_part="DEFINED Vars: ${defined[@]}"
     [[ ${#undefined[@]} -gt 0 ]] && undef_part="UNDEFINED VARS: ${undefined[@]} - "
-    echo "$tab ${undef_part}$def_part"
+    echo " ${undef_part}$def_part"
   fi
 
   if [[ ${#found_storage_dirs[@]} == 0 ]]; then
-    echo "$tab None of the following User Storage Variables are defined:"
-    echo "$tab    (${USER_STORAGE_DIRS[@]})."
+    echo " None of the following User Storage Variables are defined:"
+    echo "    (${USER_STORAGE_DIRS[@]})."
     STATUS=1  #redundant, JIC some directories become only warnings in future
   fi
 
@@ -73,13 +71,13 @@ if [[ $AT_TACC == yes ]]; then
        status=$? 
        if [[ $stat_perm =~ ^${found_storage_perms[$i]} ]]; then
           [[ $O == N ]] || [[ $O == V ]] &&
-          printf "%s %-9s directory USER permissions are valid (%s)..\n" \
-                 "$tab" $user_dir ${found_storage_perms[$i]}
+          printf " %-9s directory USER permissions are valid (%s)..\n" \
+                 $user_dir ${found_storage_perms[$i]}
           valid+=($user_dir)
        else
           [[ $O == N ]] || [[ $O == V ]] &&
-          printf "%s %-9s directory USER permissions (%s) NOT valid (required: %s).\n" \
-                 "$tab" $user_dir $stat_perm ${found_storage_perms[$i]}
+          printf " %-9s directory USER permissions (%s) NOT valid (required: %s).\n" \
+                 $user_dir $stat_perm ${found_storage_perms[$i]}
           STATUS=1
           invalid+=($user_dir)
       fi  
@@ -88,7 +86,7 @@ if [[ $AT_TACC == yes ]]; then
   if [[ $O == T ]]; then 
     [[ ${#valid[@]}   -gt 0 ]] &&   val_part="VALID Perms: ${valid[@]}"
     [[ ${#invalid[@]} -gt 0 ]] && inval_part="INVALID PERMS: ${invalid[@]} - "
-    echo "$tab ${inval_part}$val_part"
+    echo " ${inval_part}$val_part"
   fi
 
   # test writing/reading from USER directories (that mount is correct)

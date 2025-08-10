@@ -13,8 +13,6 @@
 [[ $1 == t ]] && O=T 
 [[ $1 == v ]] && O=V 
 
-space10='          '  tab=""
-
   host_name=`hostname -A`
   for sys in frontera vista stampede ls6; do
     [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
@@ -25,15 +23,13 @@ space10='          '  tab=""
   fi
 
   echo "MODULES Access and Loads"
-  tab=$space10
-
 
   output=`type module`
   if [[ $? == 0 ]]; then
      cmd=executable
      [[ $output =~ "module is a function" ]] && cmd=function
      [[ $O == V ]] || [[ $O == N ]] &&
-     echo "$tab The module $cmd was found."
+     echo " The module $cmd was found."
   else
      echo " No path/type for module command found."
      echo " Check to make system initialization is defining the module function."
@@ -45,10 +41,10 @@ if [[ $AT_TACC == yes ]]; then
   output=`ml is-loaded TACC`
   if [[ $? == 0 ]]; then
     [[ $O == V ]] || [[ $O == N ]] &&
-    printf "%s %-7s module is loaded.\n" "$tab" "TACC"
+    printf " %-7s module is loaded.\n"  "TACC"
     T_string="TACC module loaded. " 
   else
-    echo "$tab TACC module is NOT loaded-- a requirement for TACC environments."
+    echo " TACC module is NOT loaded-- a requirement for TACC environments."
     exit 1
   fi
   
@@ -64,12 +60,12 @@ if [[ $AT_TACC == yes ]]; then
     if [[ ${#compilers[@]} ==  1 ]]; then
       type=has_default
       [[ $O == V ]] || [[ $O == N ]] &&
-      printf "%s %-7s compiler module is in the default module group and is loaded.\n" "$tab" ${compilers[0]}
+      printf " %-7s compiler module is in the default module group and is loaded.\n" ${compilers[0]}
       T_string="$T_string Module ${compilers[0]} is the default compiler module."
     fi
-    [[ ${#compilers[@]} ==  0 ]] && echo "$tab No compiler found in default system system module." &&  exit 1
-    [[ ${#compilers[@]} -gt 1 ]] && echo "$tab More than 1 compiler system found in the default module." && 
-                                      echo "$tab Only a single compiler system can be loaded in a module env." &&
+    [[ ${#compilers[@]} ==  0 ]] && echo " No compiler found in default system system module." &&  exit 1
+    [[ ${#compilers[@]} -gt 1 ]] && echo " More than 1 compiler system found in the default module." && 
+                                      echo " Only a single compiler system can be loaded in a module env." &&
                                       exit 1
   fi
   
@@ -80,16 +76,16 @@ if [[ $AT_TACC == yes ]]; then
     done
   
     if [[ $O == V ]] || [[ $O == N ]]; then
-      [[ ${#loaded_compilers[@]} ==  1 ]] && printf "%s %-7s module is the loaded compiler system.\n" \
-                                          "$tab" ${loaded_compilers[0]}
+      [[ ${#loaded_compilers[@]} ==  1 ]] && printf " %-7s module is the loaded compiler system.\n" \
+                                           ${loaded_compilers[0]}
     fi
-    [[   ${#loaded_compilers[@]} ==  0 ]] && echo "$tab No loaded compiler system found." &&  exit 1
-    [[   ${#loaded_compilers[@]} -gt 1 ]] && echo "$tab More than 1 compiler system found in the loaded module." && 
-                                          echo "$tab Only a single compiler system can be loaded in a module env." &&
+    [[   ${#loaded_compilers[@]} ==  0 ]] && echo " No loaded compiler system found." &&  exit 1
+    [[   ${#loaded_compilers[@]} -gt 1 ]] && echo " More than 1 compiler system found in the loaded module." && 
+                                          echo " Only a single compiler system can be loaded in a module env." &&
                                           exit 1
   fi
   [[ $O == T ]] &&
-     echo "$tab $T_string"
+     echo " $T_string"
 
 fi
 exit 0

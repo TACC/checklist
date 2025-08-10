@@ -8,9 +8,6 @@
 [[ $1 == t ]] && O=T 
 [[ $1 == v ]] && O=V 
 
-space10='          '
-tab=$space10
-
 type sbatch >& /dev/null
 [[ $? == 0 ]] && batch_sched+=(SLURM         ) && sched_cmds=(sbatch scancel squeue)
 type qsub >& /dev/null
@@ -23,8 +20,8 @@ type llsubmit >& /dev/null
 #batch_sched=()
 if [[ ${#batch_sched[@]} == 0 ]]; then
    echo "No BATCH MANAGER FOUND. Checked for: "
-   echo "$tab SLURM,  PBS_TORQUE_SGE, LSF  and LOADLEVER with commands:"
-   echo "$tab sbatch, qsub,           bsub,    llsubmit, respectively."
+   echo " SLURM,  PBS_TORQUE_SGE, LSF  and LOADLEVER with commands:"
+   echo " sbatch, qsub,           bsub,    llsubmit, respectively."
    exit 1
 elif [[ ${#batch_sched[@]} == 1 ]]; then
    echo "BATCH manager is ${batch_sched[0]}"
@@ -52,23 +49,23 @@ for sched_cmd in ${sched_cmds[@]}; do
 done
 
 if [[ ${#sched_cmds[@]} -eq ${#found_cmds[@]} ]]; then
-   echo "$tab All BATCH scheduler command(s) found: ${found_cmds[@]}"
+   echo " All BATCH scheduler command(s) found: ${found_cmds[@]}"
 else
-   echo "$tab Only found BATCH scheduler command(s): ${found_cmds[@]}"
-   echo "$tab Could not find the BATCH command(s): ${not_found_cmds[@]}"
+   echo " Only found BATCH scheduler command(s): ${found_cmds[@]}"
+   echo " Could not find the BATCH command(s): ${not_found_cmds[@]}"
    exit 1
 fi
 
 
 #q_status=(`sinfo --noheader -o "%20P %5a"`)
-q_status=`sinfo --noheader -o "$tab   %10P %5a"`
-queue_count=`sinfo --noheader -o "$tab   %10P %5a" | wc -l`
+q_status=`sinfo --noheader -o "   %10P %5a"`
+queue_count=`sinfo --noheader -o "   %10P %5a" | wc -l`
 up_count=`echo $q_status | grep -o up | wc -l`
 
-echo "$tab PARTITION  AVAILABILITY"
+echo " PARTITION  AVAILABILITY"
 echo "$q_status"
 
-[[ $up_count == 0 ]]               && echo "$tab ALL QUEUES ARE NOT up"  && exit 1
-[[ $up_count != $queue_count ]] && echo "$tab NOT ALL QUEUES ARE up." && exit 3
+[[ $up_count == 0 ]]            && echo " ALL QUEUES ARE NOT up"  && exit 1
+[[ $up_count != $queue_count ]] && echo " NOT ALL QUEUES ARE up." && exit 3
 
 exit 0

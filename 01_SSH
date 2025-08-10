@@ -14,7 +14,6 @@
   [[ $1 == t ]] && O=T
   [[ $1 == v ]] && O=V
 
-space10='          ' tab=$space10
 STATUS=0
 
 i=0
@@ -35,11 +34,11 @@ else   #determine key type
 fi
  if [[ ${#pub_keys[@]}  == 1 ]]; then
    if [[ $O == N ]] || [[ $O == V ]]; then
-    echo "$tab Found public  key ${pub_keys[0]}" && pub_key=${pub_keys[0]}
+    echo " Found public  key ${pub_keys[0]}" && pub_key=${pub_keys[0]}
    fi
    [[ $O == T ]]  && T_string="Found public key ${pub_keys[0]}"
  fi
- [[ ${#pub_keys[@]}  == 0 ]] && echo "$tab Found NO public key (searched: ${pub_key_files[@]})" && exit 1
+ [[ ${#pub_keys[@]}  == 0 ]] && echo " Found NO public key (searched: ${pub_key_files[@]})" && exit 1
 #[[ ${#pub_keys[@]} -gt 1 ]] && echo " Found Multiple public key ${pub_keys[@]}." && exit 1
 
  pub_key=${pub_keys[0]}
@@ -48,11 +47,11 @@ priv_key=${pub_key%%.pub}
 output=`ls $HOME/.ssh/$priv_key`
 if [[ $? == 0 ]]; then
    [[ $O == N ]] || [[ $O == V ]] && 
-     echo "$tab Found private key $priv_key"
+     echo " Found private key $priv_key"
    [[ $O == T ]] && 
      T_string="$T_string and private key $priv_key" 
 else
-  echo "$tab Could NOT find private key $priv_key."; exit 1
+  echo " Could NOT find private key $priv_key."; exit 1
 fi
 
 filenames=( .ssh $priv_key $pub_key authorized_keys )
@@ -85,17 +84,14 @@ check_perm(){
   
   if [[ $stat_perm == ${perms[$i]} ]]; then
     [[ $O == N ]] || [[ $O == V ]] &&
-    printf "%s %-40s %s\n" "$tab" "Permissions correct for $name:" "${perms[$i]}"
+    printf " %-40s %s\n"  "Permissions correct for $name:" "${perms[$i]}"
   else
     return_status=1
-    echo "$tab FAILED Permissions on $short_pathname are incorrect."
-    echo "$tab   Found:     $stat_perm permissions for $name"
-    echo "$tab   Should be: ${perms[$i]}"
-    echo "$tab   Execute:   chmod ${set_perms[$i]} $short_pathname"
+    echo " FAILED Permissions on $short_pathname are incorrect."
+    echo "   Found:     $stat_perm permissions for $name"
+    echo "   Should be: ${perms[$i]}"
+    echo "   Execute:   chmod ${set_perms[$i]} $short_pathname"
   fi
-
- #[[ $space == "" ]] && pass_space=$tab #first time no space
-  space=$tab #first time no space
 
 }
 
@@ -105,8 +101,8 @@ for i in ${!pathnames[@]}; do
 done
 
 if [[ $O == T ]] && [[ $STATUS == 0 ]]; then
-   echo "$tab $T_string" 
-   echo "$tab Permissions OK for: ${filenames[@]}" 
+   echo " $T_string" 
+   echo " Permissions OK for: ${filenames[@]}" 
 fi
 
 exit $STATUS
