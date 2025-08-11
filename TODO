@@ -2,7 +2,8 @@
 - [ ] 1.) Finish verbosity in scripts.
 - [ ] 2.) Check Failure Verbosity
 - [x] 3.) Configure for Warnings
-- [ ] 4.) Maybe first word colorize in output.
+- [x] 4.) Maybe first word colorize in output.
+- [x] 5.) Do all after-first-line tabbig in checklist, not scripts.
 
 - [ ] 02_Storage check for ability to create files in DIRS.
 - [ ] Should color only script failure statements-- not all output.
