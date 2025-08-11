@@ -7,3 +7,5 @@
 
 - [ ] 02_Storage check for ability to create files in DIRS.
 - [ ] Should color only script failure statements-- not all output.
+
+- [ ] What if nothing is found in user directory?

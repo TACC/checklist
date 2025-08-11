@@ -1,13 +1,19 @@
 #!/bin/bash
-# Checklist is a rename and rewrite the python sanitycheck tool "at TACC".
+# Checklist is a rename and rewrite of the python sanitycheck tool "at TACC".
 # It "checks" the same user environment components, but is a complete rewrite 
-# in the BASH shell scripting language, performing checks in different ways
+# in the BASH shell scripting language, performing checks in different way
 # and reporting is somewhat different.
 # Nevertheless, it is versioned 4.0 in recognition of the previous work.
 
 # One important design concept of 4.0 is that
 # it simplifies how to include your own scripts for checking.
-# Written by Kent Milfeld
+# Write a script (Bash, python, ...) or C/C++/Fortran executable that returns:
+#   one generic line of the purpose.
+#   Additional line(s) about the success, failure or warning.
+#   Return value (for the SHELL execution to read) of 0, 1 or 3, respectively.
+# Read README.md for more details.
+# 
+#                                          2025-08-08 Written by Kent Milfeld
 # 
 # END COMMENTS -- Do Not Remove, Alter or Duplicate
 #-----
@@ -16,15 +22,12 @@ USAGE=" $0 [t|v]  #terse|verbose"
 #Command line options t=terse,v=verbose, default normal
 [[ $# == 1 ]] && [[ $1 != t ]] && [[ $1 != v ]] &&  echo "$USAGE" && exit 1
 
-  RED="\033[0;31m"
-  MAG="\033[0;34m"
+ BLUE="\033[0;34m"
  CYAN="\033[0;36m"
- GRNB="\033[1;32m"
-  GRN="\033[0;32m"
- REDB="\033[1;31m"
-  RED="\033[0;35m"
- GLDB="\033[1;33m"
-  GLD="\033[0;33m"
+
+ GRNB="\033[1;32m" GRN="\033[0;32m"
+ REDB="\033[1;31m" RED="\033[0;35m"
+ GLDB="\033[1;33m" GLD="\033[0;33m"
 RESET="\033[0m"
 #Black: 30, Red: 31, Green: 32, Yellow: 33, Blue: 34, Magenta: 35, Cyan: 36, and White: 37.
 
@@ -37,7 +40,6 @@ if [[ -z $clist ]]; then
 fi
 
 #   Add User Checks HERE to clist when check files (not functions) are used.
-CHECKLIST_USER_DIR=`pwd`/myown
 if [[ -d $CHECKLIST_USER_DIR ]]; then
    user_clist=( $(cd $CHECKLIST_USER_DIR; ls -1 [0-9][0-9]*) )
    clist=(${clist[@]} ${user_clist[@]})
@@ -45,7 +47,7 @@ fi
 
 for check in ${clist[@]}; do
 
-  # Indicate when User check start, and use user's checlist directory
+  # Indicate when User check start, and use user's checklist directory
   if [[ $check == ${user_clist[0]} ]]; then
     USE=scripts
     echo "  =========  vvv User Checklist vvv ============"
@@ -90,8 +92,3 @@ for check in ${clist[@]}; do
   fi
 
 done
-#STRING1=$( echo $output | sed -n 1p | awk '{print $1}')
-#[[ $status == 0 ]] && output=$(sed 's/'$STRING1'/\\e[0;36;1m'$STRING1'\\e[0m/' <<< $output)
-#[[ $status == 1 ]] && output=$(sed 's/'$STRING1'/\\e[0;31;1m'$STRING1'\\e[0m/' <<< $output)
-#[[ $status == 2 ]] && output=$(sed 's/'$STRING1'/\\e[0;34;1m'$STRING1'\\e[0m/' <<< $output)
-

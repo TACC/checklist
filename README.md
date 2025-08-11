@@ -81,13 +81,13 @@ in C, exit in SHELL) value for the bash `checklist` command to capture
          $( type my_app >/dev/null 2>&1 )           # check 4 my_app, no output
          if [[ $? == 0 ]]; then
            echo " my_app is present."               # message & status (0=PASS)
-           exit 0                                  
+           exit 0    
          else
            echo " my_app is NOT present (check uses \"type\" cmd)."
            echo " Check \$PATH variable."
            echo " Acquire from https/github.com/$USER/my_app."
            exit 1                                            # status (1=FAIL)
-         fi
+         fi 
 ```
 
   
@@ -103,26 +103,27 @@ the output lines up for the checklist reporting (e\.g\. for above):
 
 * BASH Template verbosity standard checklist options
 ```
-#!/bin/bash
+        #!/bin/bash
         [[ $# != 1 ]] && O=N    #Command line options t=Terse,v=Verbose, default Normal
         [[ $1 == t ]] && O=T 
         [[ $1 == v ]] && O=V 
 
-         $( type my_app >/dev/null 2>&1 ) # check 4 my_app, no output
-         if [[ $? == 0 ]]; then
-           echo " my_app is present."        # message and status (0=PASS)
-           exit 0                            #return status       
-         else
-           [[ $O == T ]]  &&                               # terse
-             echo " my_app was NOT FOUND."
-           [[ $O == N ]] || [[ $O == V ]] &&               # normal or verbose
-             echo " my_app was NOT FOUND by \"type\"." && 
-             echo " Check \$PATH variable or default module setup."
-           [[ $O == V ]] &&                                #verbose
-             echo " Acquire from https//:github.com/$USER/my_app."
-           exit 1                                          # return status
-         fi
+        echo "APPS checking for my_app in \$PATH"  # line 1 general description
 
+        $( type my_app >/dev/null 2>&1 ) # check 4 my_app, no output
+        if [[ $? == 0 ]]; then
+          echo " my_app is present."        # message and status (0=PASS)
+          exit 0                            #return status    
+        else
+          [[ $O == T ]]  &&                               # terse
+            echo " my_app was NOT FOUND."
+          [[ $O == N ]] || [[ $O == V ]] &&               # normal or verbose
+            echo " my_app was NOT FOUND by \"type\" cmd." &&  
+            echo " Check \$PATH variable or default module setup."
+          [[ $O == V ]] &&                                #verbose
+            echo " Acquire my_app from https//:github.com/$USER/my_app."
+          exit 1                                          # return status
+        fi  
 ```
 
 
