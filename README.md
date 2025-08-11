@@ -7,9 +7,9 @@ Checklist 4.0 is a complete rewrite and redesign of the Sanitytool sanitycheck d
 #### General:
 
 * The checklist command and its modules are Born Shell (bash) Scripts.  
-The modules are check properties/accessiblity/restrictions
+The modules check properties/accessiblity/restrictions
 for services/file systems/allocations/quotas/etc. indicated by 
-the modules name.  The module are call in numerical order of 
+the module's name.  The module are called in numerical order of 
 the prefix number in the module name (01_SSH, <##>_<whatever>)
 
 * The checklist cmd and modules appear in the same directory as:
@@ -54,7 +54,7 @@ Checks that provide WARNings may also provide diagnostic information.
 * Users can include their own checks in a directory, with
 names of the form *PrefixNo_Name*, and specify the pathname
 to their module directory by setting the environment
-CL_USER_DIR environment variable to the full path to the directory.
+CHECKLIST_USER_DIR environment variable to the full path to the directory.
 When checklist is run, it executes the user modules and 
 reports on the returned values after completing 
 the system-wide modules. 
@@ -62,7 +62,7 @@ the system-wide modules.
 * Directory location of your checklist module commands should be exported (in a startup script--  ~/.profile, etc.).  If modules located in $HOME/apps/checklist, then use:
   
 ```
-         $ export CL_USER_DIR=$HOME/apps/checklist
+         $ export CHECKLIST_USER_DIR=$HOME/apps/checklist
 ```
 
 * The following is a template for a user module. The module can be an executable
@@ -72,7 +72,7 @@ in C, exit in SHELL) value for the bash `checklist` command to capture
 
 * BASH Template
 ```
-         $ cat $CL_USER_DIR/01_APPS
+         $ cat $CHECKLIST_USER_DIR/01_APPS
 
          #!/bin/bash
 
