@@ -34,7 +34,7 @@ RESET="\033[0m"
 #   Add APP Checks HERE to clist when check files (not functions) are used.
 if [[ -z $clist ]]; then
   USE=scripts
-  CL_DIR=`pwd`
+  CL_DIR=$(dirname $0)
   CL_CHECK_DIR=$CL_DIR
   clist=( $(cd $CL_CHECK_DIR; ls -1 [0-9][0-9]*) )
 fi
