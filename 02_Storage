@@ -20,7 +20,6 @@ host_name=`hostname -A`
 for sys in frontera vista stampede ls6; do
   [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
 done
-TACC_SYS=stampede
 
 if [[ $AT_TACC == yes ]]; then
    USER_STORAGE_DIRS=( HOME  SCRATCH WORK  STOCKYARD )
