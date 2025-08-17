@@ -20,8 +20,8 @@ type llsubmit >& /dev/null
 #batch_sched=()
 if [[ ${#batch_sched[@]} == 0 ]]; then
    echo "No BATCH MANAGER FOUND. Checked for: "
-   echo " SLURM,  PBS_TORQUE_SGE, LSF  and LOADLEVER with commands:"
-   echo " sbatch, qsub,           bsub,    llsubmit, respectively."
+   echo " Checked for SLURM,  PBS_TORQUE_SGE, LSF  and LOADLEVER with commands:"
+   echo "             sbatch, qsub,           bsub,    llsubmit, respectively."
    exit 1
 elif [[ ${#batch_sched[@]} == 1 ]]; then
    echo "BATCH manager is ${batch_sched[0]}"

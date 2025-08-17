@@ -15,10 +15,29 @@
 
 STATUS=0
 
-host_name=`hostname -A`
-for sys in frontera vista stampede ls6; do
-  [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
-done
+  HPC_OSs=(rocky centos fedora ubuntu debian)
+  if [[ -f /etc/os-release ]]; then
+    output=$( grep ^ID= /etc/os-release ) #e.g. ID="rocky"
+    eval $output
+    OS=$ID
+    if [[ ! $HPC_OSs =~ $OS ]]; then
+       echo " internal ERROR: could not get OS from /etc/os-release"
+       echo "   search list ( ${HPC_OSs[@]} )"
+       exit 1
+    fi
+  else
+    [[ `uname -a` =~ Darwin ]] && OS=darwin
+  fi
+
+  [[ $OS == darwin ]]          && opts='-s'
+  [[ ${HPC_OSs[@]} =~ $OS   ]] && opts='-A'
+  host_name=`hostname $opts`
+
+  for sys in frontera vista stampede ls6; do
+    [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
+  done
+  [[ $AT_TACC != yes ]] && echo " RESERVATIONS" &&  
+     echo " Checklist not configured for Reservations on this system." && exit 0
 
 if [[ $AT_TACC == yes ]]; then
   ACL_DIR=/etc/slurm

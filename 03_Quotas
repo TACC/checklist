@@ -28,6 +28,7 @@ else
   echo " ERROR (internal): Don't know OS for df command.  Bailing"
   exit 1
 fi
+#TODO  Use new os-release check
 
 #Check use of local files systems
 local_disks=(/tmp)

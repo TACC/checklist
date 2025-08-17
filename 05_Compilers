@@ -13,28 +13,64 @@
 [[ $1 == t ]] && O=T 
 [[ $1 == v ]] && O=V 
 
+HPC_OSs=(rocky centos fedora ubuntu debian)
+  if [[ -f /etc/os-release ]]; then
+    output=$( grep ^ID= /etc/os-release ) #e.g. ID="rocky"
+    eval $output
+    OS=$ID
+    if [[ ! $HPC_OSs =~ $OS ]]; then
+       echo " internal ERROR: could not get OS from /etc/os-release"
+       echo "   search list ( ${HPC_OSs[@]} )"
+       exit 1
+    fi
+  else
+    [[ `uname -a` =~ Darwin ]] && OS=darwin
+  fi
+
 STATUS=0
 
-host_name=`hostname -A`
+[[ $OS == darwin ]]          && opts='-s'
+[[ ${HPC_OSs[@]} =~ $OS   ]] && opts='-A'
+
+host_name=`hostname $opts`
 for sys in frontera vista stampede ls6; do
   [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
 done
 
+module_clause=""
+output=`type module 2>/dev/null`
+[[ $? == 0 ]] && module_clause="in present module environment"
+
 compiler_families=(nvidia intel oneAPI llvm gcc)
 
-declare -A sets
-sets[nvidia]="nvc nvc++ nvfortran"
- sets[intel]="icc icpc ifort"
-sets[oneAPI]="icx icpx ifx"
-  sets[llvm]="clang clang++ flang"
-   sets[gcc]="gcc g++ gfortran"    #ALWAYS keep gcc last
+[[ ! $OS == darwin ]] && declare -A sets # Don't do on Darwin bash 3.2.57(1) (arm64-apple-darwin24)
+nvidia_set="nvc nvc++ nvfortran"
+ intel_set="icc icpc ifort"
+oneAPI_set="icx icpx ifx"
+  llvm_set="clang clang++ flang"
+  gcc_set="gcc g++ gfortran"      #Uh cannot use hash in Darwin bash!!!!!
+
+sets[nvidia]="$nvidia_set"
+ sets[intel]="$intel_set"
+sets[oneAPI]="$oneAPI_set"
+  sets[llvm]="$llvm_set"
+   sets[gcc]="$gcc_set"    #ALWAYS keep gcc last
 
 
 #Check for all known compilers
 echo "COMPILERS Searching Compiler Families (${compiler_families[@]})"
 
 for family in ${compiler_families[@]}; do
-  set=( ${sets[$family]} )
+
+  [[ $OS != darwin ]] && set=( ${sets[$family]} )
+  if [[ $OS == darwin ]]; then
+     [[ $family == nvidia ]] && set=("$nvidia_set")
+     [[ $family == intel  ]] && set=("$intel_set")
+     [[ $family == oneAPI ]] && set=("$oneAPI_set")
+     [[ $family == llvm   ]] && set=("$llvm_set")
+     [[ $family == gcc    ]] && set=("$gcc_set")
+  fi 
+
   found=()
   for compiler in ${set[@]}; do
       output=`type $compiler 2>&1`
@@ -47,7 +83,7 @@ for family in ${compiler_families[@]}; do
     flat_set="${set[@]}"
   if [[ ${#found[@]} == 0 ]]; then
      if [[ $O == V ]]; then
-       printf " %-6s family NOT AVAILABLE in present module environment.\n" $family
+       printf " %-6s family NOT AVAILABLE $module_clause.\n" $family
        [[ $family == gcc ]] && printf "       family is required!\n"  && STATUS=1
      fi
      [[ $family == gcc ]] && found_gcc_family=no
@@ -55,8 +91,8 @@ for family in ${compiler_families[@]}; do
 
   if [[ ${#found[@]} == 1 ]] || [[ ${#found[@]} == 2 ]]; then
      if [[ $O == N ]] || [[ $O == V ]]; then
-       printf " %-6s family SUBSET AVAILABLE in present module environment (%s).\n"  $family  "$flat_found"
-       [[ $family == gcc ]] && printf "       Complete family is required!\n" "$flat_set"  && STATUS=1
+       printf " %-6s family SUBSET AVAILABLE $module_clause (%s).\n"  $family  "$flat_found"
+       [[ $family == gcc ]] && printf "        Complete family is required!\n" "$flat_set"  && STATUS=1
      fi
      [[ $family == gcc ]] && found_gcc_subset=yes && gcc_subset=($flat_found)
      found_subsets+=("${family}: $flat_found")
@@ -64,12 +100,16 @@ for family in ${compiler_families[@]}; do
 
   if [[ ${#found[@]} == 3 ]] || [[ ${#found[@]} == 1 ]]; then
      if [[ $O == N ]] || [[ $O == V ]]; then
-       printf ' %-6s family in present module environment (%s).\n' $family  "$flat_found"
+       printf ' %-6s family $module_clause (%s).\n' $family  "$flat_found"
      fi
      found_all_3+=("${family}: $flat_found") 
   fi
 
-  if [[ ${compiler_families[-1]} == $family ]]; then
+##version 3.2.57(1)-release (arm64-apple-darwin24) doesn't like ${x[-1]} for last variable.
+   last_id=$(( ${#compiler_families[@]} - 1))
+
+##if [[ ${compiler_families[-1]} == $family ]]; then
+  if [[ ${compiler_families[$last_id]} == $family ]]; then
     if [[ $O == T ]]; then
       if [[ ${#found_subsets[@]} == 0 ]] && [[ ${#found_all_3[@]} == 0 ]];  then
         echo " COMPILERS NONE FOUND (searched ${compiler_families[@]})"

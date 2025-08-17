@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 # 1.) Determine if USER STORAGE DIRS (US_DIRS) are defined
 #     HOME, WORK, SCRATCH are critical, not defined is failure
@@ -14,17 +14,42 @@
 [[ $1 == t ]] && O=T
 [[ $1 == v ]] && O=V
 
+HPC_OSs=(rocky centos fedora ubuntu debian)
+  if [[ -f /etc/os-release ]]; then
+    output=$( grep ^ID= /etc/os-release ) #e.g. ID="rocky"
+    eval $output
+    OS=$ID
+    if [[ ! $HPC_OSs =~ $OS ]]; then
+       echo " internal ERROR: could not get OS from /etc/os-release"
+       echo "   search list ( ${HPC_OSs[@]} )"
+       exit 1
+    fi
+  else
+    [[ `uname -a` =~ Darwin ]] && OS=darwin
+  fi
+
+
 STATUS=0
 
-host_name=`hostname -A`
+
+[[ $OS == darwin ]]          && opts='-s'
+[[ ${HPC_OSs[@]} =~ $OS   ]] && opts='-A'
+host_name=`hostname $opts`
 for sys in frontera vista stampede ls6; do
   [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
 done
-
 if [[ $AT_TACC == yes ]]; then
    USER_STORAGE_DIRS=( HOME  SCRATCH WORK  STOCKYARD )
   USER_STORAGE_PERMS=( drwx  drwx    drwx  drwx     )
   CRITICAL_STORAGE_DIRS=( HOME )
+fi
+if [[ $OS == darwin ]]; then
+      USER_STORAGE_DIRS=( HOME )
+     USER_STORAGE_PERMS=( drwx )
+  CRITICAL_STORAGE_DIRS=( HOME )
+fi
+
+if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
 
  #echo "STORAGE Environment Variable Definition & Directory Perms." 
   echo "STORAGE ENV VARS & PERMS"
@@ -62,11 +87,14 @@ if [[ $AT_TACC == yes ]]; then
     STATUS=1  #redundant, JIC some directories become only warnings in future
   fi
 
+  [[ $OS == darwin ]]          && opts='-f %Sp'
+  [[ ${HPC_OSs[@]} =~ $OS   ]] && opts='-c %A'
+
   # Check USER permission of directories for which variables are defined.
   if [[ ${#found_storage_dirs[@]} -gt 0 ]]; then
     for i in ${!found_storage_dirs[@]}; do
        user_dir=${found_storage_dirs[$i]}
-       stat_perm=`stat -c %A ${found_pathnames[$i]}`
+       stat_perm=`stat $opts ${found_pathnames[$i]}`
        status=$? 
        if [[ $stat_perm =~ ^${found_storage_perms[$i]} ]]; then
           [[ $O == N ]] || [[ $O == V ]] &&

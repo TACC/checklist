@@ -14,56 +14,107 @@
   [[ $1 == t ]] && O=T
   [[ $1 == v ]] && O=V
 
-STATUS=0
+  STATUS=0
 
-i=0
-pub_key_files=( id_ed25519.pub id_rsa.pub )
+  HPC_OSs=(rocky centos fedora ubuntu debian)
+
+   SSH_DIR=$HOME/.ssh
+   pub_key_files=( id_ed25519.pub id_rsa.pub id_ecdsa.pub )
+  priv_key_files=( id_ed25519     id_rsa     id_ecdsa )
+
+
+  ##NEW
+  filenames=( .ssh         pub_key        priv_key        authorized_keys )
+   perms=(    drwx------   -rw-r--r--     -rw-------      -rw------- )
+  set_perms=( 700          644            600             600 )
+  functions=( directory    "public key"   "private key"   authorized_keys )
+
+  if [[ -f /etc/os-release ]]; then
+    output=$( grep ^ID= /etc/os-release ) #e.g. ID="rocky"
+    eval $output
+    OS=$ID
+    if [[ ! $HPC_OSs =~ $OS ]]; then
+       echo " internal ERROR: could not get OS from /etc/os-release"
+       echo "   search list ( ${HPC_OSs[@]} )"
+       exit 1
+    fi
+  else
+    [[ `uname -a` =~ Darwin ]] && OS=darwin
+  fi
 
 echo "SSH setup"
 
-output=`ls $HOME/.ssh/*.pub`
+# SSH Directory
+if [[ ! -d $SSH_DIR ]]; then  # Does $HOME/.ssh exist
+   unfound=(${filenames[0]})
+   echo " NO \$HOME/.ssh directory found." && exit 1
+else
+  found=(${filenames[0]})
+  [[ $O == N ]] || [[ $O == V ]] &&
+  echo " Found ${functions[0]} ${filenames[1]}."
+  
+fi
+
+# PUBLIC KEY file(s)
+output=`ls $SSH_DIR/*.pub 2>/dev/null`  #pub key
 if [[ $? != 0 ]]; then
-  echo " Could not find any public key (of form \*pub)."
-  exit 1
+  echo " NO ${functions[1]} Found (of form \*pub)."
+  STATUS=1
 else   #determine key type
   for file in ${pub_key_files[@]}; do
-    if [[ $output =~ $file  ]]; then
-       pub_keys+=($file)
-    fi
+    [[ $output =~ $file  ]] && pub_keys+=($file)
   done
 fi
- if [[ ${#pub_keys[@]}  == 1 ]]; then
-   if [[ $O == N ]] || [[ $O == V ]]; then
-    echo " Found public  key ${pub_keys[0]}" && pub_key=${pub_keys[0]}
-   fi
-   [[ $O == T ]]  && T_string="Found public key ${pub_keys[0]}"
- fi
- [[ ${#pub_keys[@]}  == 0 ]] && echo " Found NO public key (searched: ${pub_key_files[@]})" && exit 1
-#[[ ${#pub_keys[@]} -gt 1 ]] && echo " Found Multiple public key ${pub_keys[@]}." && exit 1
 
- pub_key=${pub_keys[0]}
-priv_key=${pub_key%%.pub}
+if [[ ${#pub_keys[@]}  == 1 ]]; then
+  filenames[1]=${pub_keys[0]}
+  found+=(${filenames[1]})
 
-output=`ls $HOME/.ssh/$priv_key`
-if [[ $? == 0 ]]; then
-   [[ $O == N ]] || [[ $O == V ]] && 
-     echo " Found private key $priv_key"
-   [[ $O == T ]] && 
-     T_string="$T_string and private key $priv_key" 
-else
-  echo " Could NOT find private key $priv_key."; exit 1
+  [[ $O == N ]] || [[ $O == V ]] &&
+    echo " Found ${functions[1]} ${filenames[1]}" && pub_key=${pub_keys[0]}
+fi
+if [[ ${#pub_keys[@]} == 0 ]]; then
+  unfound+=(${filenames[1]})
+  skip=(1)
+  echo " NO ${functions[1]} Found (searched: ${pub_key_files[@]})" && STATUS=1
 fi
 
-filenames=( .ssh $priv_key $pub_key authorized_keys )
-pathnames=( $HOME/.ssh $HOME/.ssh/$priv_key $HOME/.ssh/$pub_key $HOME/.ssh/authorized_keys )
- perms=(     drwx------ -rw-------           -rw-r--r--          -rw------- )
-#perms=(     .rwx------ .rw-------           .rw-r--r--          .rw------- ) #tests
-set_perms=( 700        600                  644                 600 )
- #echo ${pathnames[@]}
- #echo ${perms[@]}
- #echo ${set_perms[@]}
- #echo ==================================================
+# PRIVATE KEY file(s)
+for file in ${priv_key_files[@]}; do
+  output=`ls $SSH_DIR/$file 2>/dev/null`  #priv key
+  [[ $? == 0 ]] && priv_keys+=($file)
+done
 
+if [[ ${#priv_keys[@]}  == 1 ]]; then
+  filenames[2]=${priv_keys[0]}
+  found+=(${filenames[2]})
+
+  [[ $O == N ]] || [[ $O == V ]] &&
+    echo " Found ${functions[2]} ${filenames[2]}" && priv_key=${priv_keys[0]}
+fi
+if [[ ${#priv_keys[@]} == 0 ]]; then
+  unfound+=(${filenames[2]})
+  skip+=(2)
+  echo " NO ${functions[2]} Found (searched: ${priv_key_files[@]})" && STATUS=1
+fi
+
+# AUTHORIZED_KEYS file
+output=`ls $SSH_DIR/${filenames[3]} 2>/dev/null`  #authorized_keys
+if [[ $? != 0 ]]; then
+  unfound+=(${filenames[3]})
+  skip+=(3)
+  echo " NO ${functions[3]} file Found."
+  STATUS=1
+else
+  found+=(${filenames[3]})
+fi
+
+if [[ $O == T ]]; then
+  flat_found="${found[@]}" flat_unfound="${unfound[@]}"
+  printf  " SSH Found files :    (%s)\n" "$flat_found"
+  [[ ${#unfound[@]} -gt 0 ]] &&
+  printf " SSH NOT Found files: (%s)\n" "$flat_unfound"
+fi
 
 check_perm(){
 
@@ -74,12 +125,14 @@ check_perm(){
   local O=$4
   return_status=0
 
-  stat_perm=`stat -c %A ${pathnames[$i]}`
+  opts='-c %A'
+  [[ $OS == darwin ]]          && opts='-f %Sp'
+  [[ ${HPC_OSs[@]} =~ $OS   ]] && opts='-c %A'
+  stat_perm=`stat $opts ${pathname}`
   status=$?
   
-  name=`basename ${pathnames[$i]}`
-  short_pathname=$(echo ${pathnames[$i]} | sed 's@'$HOME'@$HOME@')
- #echo short_pathname=$short_pathname
+  name=`basename ${pathname}`
+  short_pathname=$(echo ${pathname} | sed 's@'$HOME'@$HOME@')
   
   
   if [[ $stat_perm == ${perms[$i]} ]]; then
@@ -95,9 +148,15 @@ check_perm(){
 
 }
 
-for i in ${!pathnames[@]}; do
-   check_perm ${pathnames[$i]} ${perms[$i]} ${set_perms[$i]} $O
-   [[ $return_status != 0 ]] && STATUS=$return_status
+for i in ${!filenames[@]}; do
+  if [[ ! "${skip[@]}" =~ $i ]]; then
+    path_name=$SSH_DIR/${filenames[$i]}
+    [[ $i == 0 ]] &&  path_name=$SSH_DIR  #Special, the Directory
+
+    check_perm ${path_name} ${perms[$i]} ${set_perms[$i]} $O
+
+    [[ $return_status != 0 ]] && STATUS=$return_status
+  fi
 done
 
 if [[ $O == T ]] && [[ $STATUS == 0 ]]; then
