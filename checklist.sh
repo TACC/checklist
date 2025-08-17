@@ -69,9 +69,9 @@ for check in ${clist[@]}; do
     # For highlighting first word, then remove color around line1 in printf
     # word1=$( echo $output | sed -n 1p | awk '{print $1}')
     # line1=$(sed 's/'$word1'/\\e[0;36;1m'$word1'\\e[0m/' <<< $line1)
-      line1=$( head -1    <<< $output)
-      lines=$( tail -n +2 <<< $output)
-      lines=$(sed 's/^/          /' <<< $lines)
+      line1=$( head -1     <<< "$output")
+      lines=$( tail -n +2  <<< "$output")
+      lines=$(sed 's/^/          /' <<< "$lines")
 
   if [[ $status == 0 ]]; then
       printf " [${GRNB}PASS${RESET}]"
