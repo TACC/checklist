@@ -160,8 +160,7 @@ for i in ${!filenames[@]}; do
 done
 
 if [[ $O == T ]] && [[ $STATUS == 0 ]]; then
-   echo " $T_string" 
-   echo " Permissions OK for: ${filenames[@]}" 
+   echo " Permissions OK for:  (${filenames[@]})" 
 fi
 
 exit $STATUS

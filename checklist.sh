@@ -79,7 +79,7 @@ for check in ${clist[@]}; do
       printf "${GRN}$line1${RESET}\n"
       printf "%s\n"  "$lines"
   elif [[  $status == 1 ]]; then
-      echo ""           # Space failures out and colorize them
+     #echo ""           # Space failures out and colorize them
       printf " [${REDB}FAIL${RESET}]"
       printf " %2s" $NO
       printf " ${GRN}$line1${RESET}\n"

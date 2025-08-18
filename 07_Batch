@@ -8,6 +8,8 @@
 [[ $1 == t ]] && O=T 
 [[ $1 == v ]] && O=V 
 
+STATUS=0
+
 type sbatch >& /dev/null
 [[ $? == 0 ]] && batch_sched+=(SLURM         ) && sched_cmds=(sbatch scancel squeue)
 type qsub >& /dev/null
@@ -60,12 +62,23 @@ fi
 #q_status=(`sinfo --noheader -o "%20P %5a"`)
 q_status=`sinfo --noheader -o "   %10P %5a"`
 queue_count=`sinfo --noheader -o "   %10P %5a" | wc -l`
-up_count=`echo $q_status | grep -o up | wc -l`
+up_count=`echo $q_status | grep -o '\bup\b' | wc -l`
 
-echo " PARTITION  AVAILABILITY"
-echo "$q_status"
+[[ $up_count == 0 ]]             && echo " NO QUEUES ARE UP"  && exit 1
+[[ $queue_count -ne $up_count ]] && STATUS=3
 
-[[ $up_count == 0 ]]            && echo " ALL QUEUES ARE NOT up"  && exit 1
-[[ $up_count != $queue_count ]] && echo " NOT ALL QUEUES ARE up." && exit 3
+if [[ $O == N  ]] || [[ $O == V ]]; then
+  echo " PARTITION  AVAILABILITY" &&
+  echo "$q_status"
+fi
 
-exit 0
+[[ $queue_count -eq $up_count ]] && echo " All Queues are UP." 
+
+if [[ $O == T  ]]; then
+  if [[ $queue_count -ne $up_count ]]; then
+    part_status=$(sinfo --noheader -o "(%P: %a)" | grep -v '\bup\b')
+    echo " NOT ALL QUEUES ARE up. List: " $part_status && STATUS=3
+  fi
+fi
+
+exit $STATUS
