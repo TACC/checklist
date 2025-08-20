@@ -105,10 +105,10 @@ for family in ${compiler_families[@]}; do
      found_all_3+=("${family}: $flat_found") 
   fi
 
-##version 3.2.57(1)-release (arm64-apple-darwin24) doesn't like ${x[-1]} for last variable.
-   last_id=$(( ${#compiler_families[@]} - 1))
+  ##if [[ ${compiler_families[-1]} == $family ]]; then
+  ##version 3.2.57(1)-release (arm64-apple-darwin24) doesn't like ${x[-1]} for last variable.
 
-##if [[ ${compiler_families[-1]} == $family ]]; then
+  last_id=$(( ${#compiler_families[@]} - 1))
   if [[ ${compiler_families[$last_id]} == $family ]]; then
     if [[ $O == T ]]; then
       if [[ ${#found_subsets[@]} == 0 ]] && [[ ${#found_all_3[@]} == 0 ]];  then
@@ -127,8 +127,8 @@ for family in ${compiler_families[@]}; do
         echo " COMPILERS No complete complier set found. (Incomplete sets: ${found_subsets[@]})"
         exit 1
       fi
-      [[ ${#found_subsets[@]} -gt 0 ]] && FSETS="${found_subsets[@]}" && echo HERE9
-      echo " COMPILERS ${found_all_3[@]} $FSETS" #(subsets: ${found_subsets[@]})
+      FSETS="${found_subsets[@]}" #flatten
+      echo " COMPILERS ${found_all_3[@]} $FSETS" #( complete and subsets )
     fi 
   fi
 
