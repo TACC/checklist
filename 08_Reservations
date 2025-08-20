@@ -30,7 +30,7 @@
     output=$( grep ^ID= /etc/os-release ) #e.g. ID="rocky"
     eval $output
     OS=$ID
-    if [[ ! $HPC_OSs =~ $OS ]]; then
+    if [[ ! ${HPC_OSs[@]} =~ $OS ]]; then
        echo " internal ERROR: could not get OS from /etc/os-release"
        echo "   search list ( ${HPC_OSs[@]} )"
        exit 1
