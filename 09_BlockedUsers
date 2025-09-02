@@ -1,17 +1,18 @@
 #!/bin/bash
 
 # @TACC searches tacc_filter_options for blocked $USER.
-# If found print failure, and message if it exists.
-# See example of blocked_user line and message.
+# If found exit with failure (exit 1), and message if it exists.
+# See example of blocked_user line and message (at end).
 # non-TACC sites need to interact with their ACL mechanism.
 # Based on Sanitytool's sanitycheck. Written and revised. 
 #                                   2025-08-01 Kent Milfeld
 
-#TODO Search for message within range of queue_acls/public
+##TODO Search for message within range of queue_acls/public
 
-[[ $# != 1 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
-[[ $1 == t ]] && O=T 
-[[ $1 == v ]] && O=V 
+  [[ $# == 0 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
+  [[ $1 =~ t ]] && O=T 
+  [[ $1 =~ v ]] && O=V 
+  [[ ! "$O" =~ [NTV] ]] && echo "USAGE: $0 [-t|-v] # terse|verbose output"
 
 STATUS=0
 
@@ -36,8 +37,8 @@ STATUS=0
   for sys in frontera vista stampede ls6; do
     [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
   done
-  [[ $AT_TACC != yes ]] && echo " RESERVATIONS" &&  
-     echo " Checklist not configured for Reservations on this system." && exit 0
+  [[ $AT_TACC != yes ]] && 
+     echo " QUEUE ACCESS: System is not configured to block queue access." && exit 0
 
 if [[ $AT_TACC == yes ]]; then
   ACL_DIR=/etc/slurm
@@ -73,15 +74,19 @@ if [[ $AT_TACC == yes ]]; then
 
     else
       [[ $O == T ]] &&
-        echo "BLOCKED QUEUE ACCESS"  &&
-        echo " User $USER has access to all queues."
-      [[ $O == N ]] || [[ $O == V ]] &&
-        echo "BLOCKED QUEUE ACCESS"  &&
-        echo " $USER has access to all queues (searched $filter_path)."
+        echo " QUEUE ACCESS:  No Restrictions."
+      [[ $O == N ]] &&
+        echo " QUEUE ACCESS: Checking block-user filter." &&
+        echo " $USER has access to all queues."
+      [[ $O == V ]] &&
+        echo " QUEUE ACCESS: Checking block-user filter ($filter_path)." &&
+        echo " $USER has access to all queues."
+
     fi 
   else
-    echo " NO \"ALL =\" line found in public queue acl file."
-    echo " Even if no user found, root is usually blocked."
+    echo " QUEUE ACCESS: NO \"ALL =\" line found in public queue ACL file."
+    echo " (The should be present and have at least \"root\" included."
+    echo " Please submit a ticket to TACC help with this report, thanks!"
     echo " If job submission works, don't consider this a problem."
     STATUS=3
   fi

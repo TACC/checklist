@@ -17,10 +17,14 @@
 # 
 # END COMMENTS -- Do Not Remove, Alter or Duplicate
 #-----
-USAGE=" $0 [t|v]  #terse|verbose"
+USAGE=" $0 [-t|-v]  #terse|verbose"   # will allow [t|v] -> anything with "t" or "v"
 
 #Command line options t=terse,v=verbose, default normal
-[[ $# == 1 ]] && [[ $1 != t ]] && [[ $1 != v ]] &&  echo "$USAGE" && exit 1
+[[ $1 =~ t ]] && set -- -t
+[[ $1 =~ v ]] && set -- -v
+
+[[ $# ==  1 ]] && [[ $1 != -t &&  $1 != -v ]] &&  echo "$USAGE" && exit 1
+[[ $# -gt 1 ]] && echo "$USAGE" && exit 1
 
  BLUE="\033[0;34m"
  CYAN="\033[0;36m"

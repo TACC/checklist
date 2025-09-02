@@ -1,190 +1,296 @@
 #!/bin/bash
 
+  [[ $# == 0 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
+  [[ $1 =~ t ]] && O=T 
+  [[ $1 =~ v ]] && O=V 
+  [[ ! "$O" =~ [NTV] ]] && echo "USAGE: $0 [-t|-v] # terse|verbose output"
 
-[[ $# != 1 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
-[[ $1 == t ]] && O=T
-[[ $1 == v ]] && O=V
+  STATUS=0
 
-host_name=`hostname -A`
+  HPC_OSs=(rocky centos fedora ubuntu debian)
+  if [[ -f /etc/os-release ]]; then
+    output=$( grep ^ID= /etc/os-release ) #e.g. ID="rocky"
+    eval $output
+    OS=$ID
+    if [[ ! ${HPC_OSs[@]} =~ $OS ]]; then
+       echo " internal ERROR: could not get OS from /etc/os-release"
+       echo "   search list ( ${HPC_OSs[@]} )"
+       exit 1
+    fi  
+  else
+    [[ `uname -a` =~ Darwin ]] && OS=darwin
+  fi  
 
-for sys in ls6 frontera stampede3 vista; do
-  [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
-done
+  [[ $OS == darwin ]]          && host_name_opts='-s'
+  [[ ${HPC_OSs[@]} =~ $OS   ]] && host_name_opts='-A'
 
-if [[ $AT_TACC == yes ]]; then
-  [[ $TACC_SYS == frontera  ]] && filesystems=(/home1 /work)
-  [[ $TACC_SYS == ls6       ]] && filesystems=(/home1 /work)
-  [[ $TACC_SYS == vista     ]] && filesystems=(/home1 /work)
-  [[ $TACC_SYS == stampede3 ]] && filesystems=(/home1 /work)
-fi
+  host_name=`hostname $host_name_opts`
 
-OS=`uname`
-output=`df --version >/dev/null 2>&1`; status=$?
-if [[ $OS == Linux ]]; then
-  df_opts=-BG          # On Centos/Rocky
-elif [[ $OS == Darwin ]]; then
-  df_opts=-g           # On MacOS
-else
-  echo " ERROR (internal): Don't know OS for df command.  Bailing"
-  exit 1
-fi
-#TODO  Use new os-release check
+  LOCAL_fs=(/tmp)
 
-#Check use of local files systems
-local_disks=(/tmp)
-if [[ $OS == Darwin ]]; then                #Uses a single df for space and inode
-  echo "STORAGE QUOTAS"
-
-  for file_sys in ${local_disks[@]}; do
-    df_flds=(`df $df_opts $file_sys | tail -n 1`)
-  
-    space_used_no=${df_flds[4]%\%}
-    inode_used_no=${df_flds[7]%\%}
-  
-    [[ $((100-space_used_no)) -lt 11 ]] || [[ $((100-inode_used_no)) -lt 11 ]] &&
-    echo " WARNING: space or inode availability low on $file_sys" 
-  
-    printf " %-8s [SPACE: %4s%% available of %4sGB]  [INODES: %4s%% free (%7s)]\n" \
-         $file_sys $((100-space_used_no)) ${df_flds[1]} \
-                   $((100-inode_used_no)) ${df_flds[6]}
+# HPC_SITE File Systems
+  for sys in ls6 frontera stampede3 vista; do
+    [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
   done
 
-elif [[ $OS == Linux ]]; then                       # requires executing 2 df's: space and inodes
-  echo "STORAGE QUOTAS"
-
-  for file_sys in ${local_disks[@]}; do
-    df_space_flds=(`df    $df_opts $file_sys | tail -n 1`)
-    df_inode_flds=(`df -i $df_opts $file_sys | tail -n 1`)
-  
-    space_used_no=${df_space_flds[4]%\%} 
-    inode_used_no=${df_inode_flds[4]%\%}
-  
-    [[ $((100-space_used_no)) -lt 11 ]] || [[ $((100-inode_used_no)) -lt 11 ]] &&
-    echo " WARNING: space or inode availability low on $file_sys" 
-  
-#   printf "%-8s [SPACE: %4s%% available of %4sGB]  [INODES: %4s%% free (%7s)]\n" \
-    printf " %-8s [SPACE: %4s%% available of %4s]  [INODES: %4s%% free (%7s)]\n" \
-           $file_sys $((100-space_used_no)) ${df_space_flds[1]} \
-                     $((100-inode_used_no)) ${df_inode_flds[1]}
-  done
-fi
-
-if [[ $AT_TACC == yes ]]; then
-
-  for fs in ${filesystems[@]}; do
-    do_cmd=lfs
-    [[ $fs =~ home1 ]] && [[ $TACC_SYS == vista     ]] && do_cmd=quota
-    [[ $fs =~ home1 ]] && [[ $TACC_SYS == stampede3 ]] && do_cmd=quota
-    [[ $fs =~ home1 ]] && [[ $TACC_SYS == ls6       ]] && do_cmd=quota
-
-    if [[ $do_cmd =~ lfs ]] ; then
-      common_out=(`lfs quota   -u $USER  $fs | sed -n '3p'`)
-      [[ ${common_out[4]} == "-" ]] && common_out[4]=0     #make grace 0 if "-"
-      [[ ${common_out[8]} == "-" ]] && common_out[8]=0
-
-      common_out[1]=`echo $(echo "scale=2; ${common_out[1]}/1048576"  | bc -l)` #kbytes to gbytes
-      common_out[2]=`echo $(echo "scale=2; ${common_out[2]}/1048576"  | bc -l)`
-      common_out[3]=`echo $(echo "scale=2; ${common_out[3]}/1048576"  | bc -l)`
-      percent_used_space=`echo $(echo "scale=2; 100*${common_out[1]}/${common_out[3]}"  | bc -l)`
-      percent_used_inode=`echo $(echo "scale=2; 100*${common_out[5]}/${common_out[7]}"  | bc -l)`
-
-      # Report at login:
-      # Disk         Usage (GB)     Limit    %Used   File Usage       Limit   %Used |
-      # /scratch         1657.0       0.0     0.00      7120972           0    0.00 |
-      #Vista $ lfs quota   -u $USER  /work | sed -n '3p'
-      #/work 450798756       0 1073741824       - 2999996       0 3000000       -
-
-      #first time write header
-      [[ ${filesystems[0]} == $fs ]] && \
-      echo " Disk         Usage (GB)     Limit    %Used   File Count      Limit  %Used "
-
-      printf  " %-13s %9s %9s %8s %12s %10s %6s\n" \
-               ${common_out[0]} \
-               ${common_out[1]} ${common_out[3]} $percent_used_space \
-               ${common_out[5]} ${common_out[7]} $percent_used_inode
+  HPC_fs=()
+  if [[ $AT_TACC == yes ]]; then
+    if [[ $TACC_SYS == frontera  ]]; then
+      HPC_fs=(/home1 /work)
+      cmds[0]="lfs quota -u $USER /home1 | sed -n '3p'"
+      cmds[1]="lfs quota -u $USER /work  | sed -n '3p'"
     fi
 
-    if [[ $do_cmd =~ quota ]] ; then
-      out=(`quota -w -f $fs | sed -n '3p'`)
+    if [[ $TACC_SYS == vista     ]] || 
+       [[ $TACC_SYS == ls6       ]] || 
+       [[ $TACC_SYS == stampede3 ]]; then
+         HPC_fs=(/home1 /work)
+         cmds[0]="    quota -w -f    /home1 | sed -n '3p'"
+         cmds[1]="lfs quota -u $USER /work  | sed -n '3p'"
+    fi
+  fi
+# end HPC_SITE File Systems
+  
 
-                  # filesys   used      quota     limit grace used      quota     limit grace
-      common_out=(${fs} ${out[1]} ${out[2]} ${out[3]} 0 ${out[4]} ${out[5]} ${out[6]} 0)
+  # Get maximum space needed for File System Name in header
+  ALL_fs=(${HPC_fs[@]} ${LOCAL_fs[@]})
+  NAME_sp=5  # Have at least 5 spaces
+  for name in ${ALL_fs[@]}; do
+    len=${#name}
+    [[ $len -gt $NAME_sp ]] && NAME_sp=$len
+  done
 
-      common_out[1]=`echo $(echo "scale=2; ${common_out[1]}/1048576"  | bc -l)` #kbytes to gbytes
-      common_out[2]=`echo $(echo "scale=2; ${common_out[2]}/1048576"  | bc -l)`
-      common_out[3]=`echo $(echo "scale=2; ${common_out[3]}/1048576"  | bc -l)`
-      percent_used_space=`echo $(echo "scale=2; 100*${common_out[1]}/${common_out[3]}"  | bc -l)`
-      if [[ ${common_out[7]} != 0 ]]; then  #fix for home1 on ls6
-        percent_used_inode=`echo $(echo "scale=2; 100*${common_out[5]}/${common_out[7]}"  | bc -l)`
+  # Print header
+  I_x='(M)'
+  [[ $O == V ]] || [[ $O == N ]]  &&
+    echo " FILESYSTEM QUOTAS: "   &&
+    printf " %-${NAME_sp}s  Usage(GB)  Limit(GB)  %%Used  -  Inodes%s  Limit%s  %%Used\n" \
+            "Disk" "$I_x" "$I_x"
+
+  OS=`uname`
+  [[ $OS == Linux  ]] && df_opts=-BG          # On Centos/Rocky
+  [[ $OS == Darwin ]] && df_opts=-g           # On MacOS
+  if [[ -z $df_opts ]]; then
+    echo " FS QUOTAS: ERROR (internal): Don't know OS for df command.  Bailing"
+    exit 1
+  fi
+  #TODO  Use new os-release check
+
+
+# CHECK LOCAL FILES SYSTEMS
+  if [[ $OS == Darwin ]]; then                #Uses a single df for space and inode
+   # $ df  /tmp            
+   # Filesystem   512-blocks      Used  Available Capacity iused      ifree %iused  Mounted on
+   # /dev/disk3s5 1942700360 315051688 1571387520    17% 1544861 7856937600    0%   /System/Volumes/Data
+  
+    for fs in ${LOCAL_fs[@]}; do
+      df_flds=(`df $df_opts $fs | tail -n 1`)
+    
+      space_used_no=${df_flds[4]%\%}
+      inode_used_no=${df_flds[7]%\%}
+
+   #Space
+    S_total=${df_flds[1]}
+    S_used=${df_flds[2]}
+    S_remain=${df_flds[3]}
+    PS_used=${df_flds[4]%\%}
+    PS_remain=$(bc <<< "100*$S_remain/$S_total")
+    [[ $PS_remain -lt 6 ]] && LS_warn+=($PS_remain) LS_warn_fs+=(${df_space_flds[5]})
+    [[ $PS_remain -lt 3 ]] && LS_fail+=($PS_remain) LS_fail_fs+=(${df_space_flds[5]})
+
+    #Inode info
+    I_used=${df_flds[5]} 
+    I_remain=${df_flds[6]} 
+    I_total=$(( I_used + I_remain ))
+    
+    PI_used=${df_flds[7]%\%} 
+    PI_remain=$(bc <<< "100*$I_remain/$I_total")
+    [[ $PI_remain -lt 6 ]] && LI_warn+=($PI_remain) LI_warn_fs+=(${df_space_flds[5]})
+    [[ $PI_remain -lt 3 ]] && LI_fail+=($PI_remain) LI_fail_fs+=(${df_space_flds[5]})
+    
+    I_remain=$(bc <<< "$I_remain/1000000")
+    I_used=$(  bc <<< "$I_used  /1000000")
+    I_total=$( bc <<< "$I_total /1000000")
+    
+   #  [[ $((100-space_used_no)) -lt 11 ]] || [[ $((100-inode_used_no)) -lt 11 ]] &&
+   #  echo " WARNING: space or inode availability low on $file_sys" 
+   #
+   #  printf " %-8s [SPACE: %4s%% available of %4sGB]  [INODES: %4s%% free (%7s)]\n" \
+   #       $file_sys $((100-space_used_no)) ${df_flds[1]} \
+   #                 $((100-inode_used_no)) ${df_flds[6]}
+
+    [[ $O == V ]] || [[ $O == N ]] &&
+      printf " %-${NAME_sp}s %6s     %6s     %6s     %6s    %6s    %6s\n" \
+              $fs \
+              ${S_used} ${S_total} ${PS_used} \
+              ${I_used} ${I_total} ${PI_used} 
+
+    [[ $O == T ]] && T_out+=("$fs ${PS_remain}% ")
+
+    done
+  
+  elif [[ $OS == Linux ]] && [[ ! -z $HPC_fs ]]; then  # requires executing df twice for space and inodes
+    for fs in ${LOCAL_fs[@]}; do
+      df_space_flds=(`df    $df_opts $fs | tail -n 1`)
+      df_inode_flds=(`df -i $df_opts $fs | tail -n 1`)
+    done
+  
+    #Space info
+    S_total=${df_space_flds[1]%\G}
+    S_used=${df_space_flds[2]%\G}
+    S_remain=${df_space_flds[3]%\G}
+    
+    PS_used=$(bc   <<< "100*$S_used/$S_total")
+    PS_remain=$(bc <<< "100*$S_remain/$S_total")
+    [[ $PS_remain -lt 6 ]] && [[ $PS_remain -ge 3 ]] && HPCS_warn+=($PS_remain) HPCS_warn_fs+=(${df_space_flds[5]})
+    [[ $PS_remain -lt 3 ]] &&                           HPCS_fail+=($PS_remain) HPCS_fail_fs+=(${df_space_flds[5]})
+    
+    #Inode info
+    I_total=${df_inode_flds[1]} 
+    I_used=${df_inode_flds[2]} 
+    I_remain=${df_inode_flds[3]} 
+    
+    PI_used=$(bc   <<< "100*$I_used/$I_total")
+    PI_remain=$(bc <<< "100*$I_remain/$I_total")
+    [[ $PI_remain -lt 6 ]] && [[ $PI_remain -ge 3 ]] && HPCI_warn+=($PI_remain) HPCI_warn_fs+=(${df_space_flds[5]})
+    [[ $PI_remain -lt 3 ]] &&                           HPCI_fail+=($PI_remain) HPCI_fail_fs+=(${df_space_flds[5]})
+    
+    I_remain=$(bc <<< "$I_remain/1000000")
+    I_used=$(  bc <<< "$I_used  /1000000")
+    I_total=$( bc <<< "$I_total /1000000")
+  
+    [[ $O == V ]] || [[ $O == N ]] &&
+      printf " %-${NAME_sp}s %6s     %6s     %6s     %6s    %6s    %6s\n" \
+              $fs \
+              ${S_used} ${S_total} ${PS_used} \
+              ${I_used} ${I_total} ${PI_used} 
+
+    [[ $O == T ]] && T_out+=("$fs ${PS_remain}% ")
+
+  fi
+
+  for i in ${!HPC_fs[@]}; do
+
+      fs=${HPC_fs[$i]}
+      out=(`eval ${cmds[$i]}`)
+
+      # stampede3$ quota -w -f /home1   ALSO: vista$ quota -w -f /home1 
+      # Disk ...
+      #      Filesystem        blocks   quota   limit   grace   files   quota   limit   grace
+      # ...:/stampede3/home1 14442436     0  14648436          198310     0    500000    
+      #               0         1         2      3       4        5       6       7       8
+      #               0         1         2      3                4       5       6 
+
+      # vista$ lfs quota -u milfeld /work 
+      # Disk quotas for usr milfeld (uid 1117):
+      # Filesystem  kbytes   quota   limit   grace   files   quota   limit   grace
+      #    /work 450798756       0 1073741824       - 2999996       0 3000000       -
+
+
+      common_out=(  ${out[@]})
+      if [[ ${#out[@]} == 7 ]]; then  # common_out assumes grace is a value (0 if not used)
+        common_out[5]=${out[4]}
+        common_out[6]=${out[5]}
+        common_out[7]=${out[6]}
+        common_out[8]=0 common_out[4]=0
       else
-        percent_used_inode="-"
-        common_out[7]="-"
+        [[ ${common_out[4]} == "-" ]] && common_out[4]=0     #make grace 0 if "-"
+        [[ ${common_out[8]} == "-" ]] && common_out[8]=0
       fi
 
-      echo " Disk         Usage (GB)     Limit    %Used   File Count      Limit  %Used "
-      printf  " %-13s %9s %9s %8s %12s %10s %6s\n" \
-               ${common_out[0]} \
-               ${common_out[1]} ${common_out[3]} $percent_used_space \
-               ${common_out[5]} ${common_out[7]} $percent_used_inode
-    fi
+      #Space info  KB->GB
+      S_total=$(bc <<< "${common_out[3]}/1048576")
+      S_used=$( bc <<< "${common_out[1]}/1048576")
+      S_remain=$(( S_total - S_used ))
+
+      PS_used=$(bc   <<< "100*$S_used/$S_total")
+      PS_remain=$(bc <<< "100*$S_remain/$S_total")
+      [[ $PS_remain -lt 6 ]] && [[ $PS_remain -ge 3 ]] && HPCS_warn+=($PS_remain) HPCS_warn_fs+=($fs)
+      [[ $PS_remain -lt 3 ]] &&                           HPCS_fail+=($PS_remain) HPCS_fail_fs+=($fs)
+  
+      #Inode info
+      I_remain=$(( ${common_out[7]} - ${common_out[5]} ))
+      I_total=$(  bc <<< "scale=2; ${common_out[7]}/1000000")
+      I_used=$(   bc <<< "scale=2; ${common_out[5]}/1000000")
+      I_remain=$( bc <<< "scale=2; $I_remain/1000000")
+  
+      PI_used=$(bc   <<< "100*$I_used/$I_total")
+      PI_remain=$(bc <<< "100*$I_remain/$I_total")
+      [[ $PI_remain -lt 6 ]] &&  [[ $PI_remain -ge 3 ]] && HPCI_warn+=($PI_remain) HPCI_warn_fs+=($fs)
+      [[ $PI_remain -lt 3 ]] &&                            HPCI_fail+=($PI_remain) HPCI_fail_fs+=($fs)
+
+      [[ $O == N ]] || [[ $O == V ]] &&
+      printf " %-${NAME_sp}s %6s     %6s     %6s     %6s    %6s    %6s\n" \
+              $fs \
+              ${S_used} ${S_total} ${PS_used} \
+              ${I_used} ${I_total} ${PI_used}
+
+      [[ $O == T ]] && T_out+=("$fs ${PS_remain}% ")
+
   done
-fi
-#Disk quotas for user milfeld (uid 1117): 
-#     Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
-#192.168.16.21:/vista/home1 23126004       0 24414060          282610       0  500000        
-#Disk quotas for usr milfeld (uid 1117):
-#     Filesystem  kbytes   quota   limit   grace   files   quota   limit   grace
-#          /work 450798756       0 1073741824       - 2999996       0 3000000       -
-#
-
-# df INFO from LINUS
-#$ df  -BG /tmp   #vistat
-#Filesystem                  1G-blocks  Used Available Use% Mounted on
-#/dev/mapper/rootvg01-lv_tmp      286G    3G      283G   1% /tmp
-#$  df -i -BG /tmp
-#Filesystem                     Inodes IUsed     IFree IUse% Mounted on
-#/dev/mapper/rootvg01-lv_tmp 149704704 13790 149690914    1% /tmp
-
-#exit 0
 
 
-#  space_used_MB=${limits[0]}
-# space_limit_MB=${limits[2]}
-#  inode_used=${limits[3]}
-# inode_limit=${limits[5]}
-# 
-# if [[ $space_limit_MB -gt 0.00 ]]; then
-#   if [[ $space_used_MB/$space_limit_MB -gt 0.95 ]]; then
-#     echo " Space used in $FS is above 95%."
-#   else
-#     echo "  ${percent}% of $percent of  12345 MB in $FS (limit: $ 
-#     #   At 90% of $FS quota (17GB used, 240GB available)
-#     #   At 90% of $FS user quota (17/240 GB used/avail)
-#   fi
-# else
-#   echo " No space limit on $FS."
-#   exit 0
-# fi
+# Print Check Info
 
-     
-# v====== TACC COMMENTS ======v
+  [[ $O == T ]] &&
+    echo "FILESYSTEM QUOTAS: (${T_out[@]}  %remaining)"
 
-# Vista $ quota -f /scratch
-#Disk quotas for user milfeld (uid 1117): 
-#     Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
-#192.168.16.21:/vista/scratch
-#                1737490432       0 9765624217600         7120972       0       0   
+  #WARN
+  if [[ ${#LS_warn[@]} -ne 0 ]]; then
+    STATUS=3
+    for i in ${!LS_warn[@]}; do
+      echo " WARNING:  ${LS_warn_fs[$i]} has only ${LS_warn[$i]}% storage available."  
+    done
+  fi
 
-#Vistat $ quota -f /home1
-#Disk quotas for user milfeld (uid 1117): 
-#    Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
-#192.168.16.21:/vista/home1
-#                23125632       0 24414060          282526       0  500000     
+  if [[ ${#LI_warn[@]} -ne 0 ]]; then
+    STATUS=3
+    for i in ${!LI_warn[@]}; do
+      echo " WARNING :  ${LI_warn_fs[$i]} has only ${LI_warn[$i]}% remaining inodes."  
+    done
+  fi
 
-# Vistat Login Disk information
-#------------------------ Disk quotas for user milfeld -------------------------
-#| Disk         Usage (GB)     Limit    %Used   File Usage       Limit   %Used |
-#| /scratch         1657.0       0.0     0.00      7120972           0    0.00 |
-#| /home1*            22.1      23.3    94.72       282526      500000   56.51 |
-#| /work*            429.9    1024.0    41.98      2999996     3000000  100.00 |
-#-------------------------------------------------------------------------------
+  if [[ ${#HPCS_warn[@]} -ne 0 ]]; then
+    STATUS=3
+    for i in ${!HPCS_warn[@]}; do
+      echo " WARNING :  ${HPCS_warn_fs[$i]} has only ${HPCS_warn[$i]}% storage available."  
+    done
+  fi
+
+  if [[ ${#HPCI_warn[@]} -ne 0 ]]; then
+    STATUS=3
+    for i in ${!HPCI_warn[@]}; do
+      echo " WARNING :  ${HPCI_warn_fs[$i]} has only ${HPCI_warn[$i]}% remaining inodes."  
+    done
+  fi
+
+  #FAIL
+  if [[ ${#LS_fail[@]} -ne 0 ]]; then
+    STATUS=1
+    for i in ${!LS_fail[@]}; do
+      echo " WARNING :  ${LS_fail_fs[$i]} has only ${LS_fail[$i]}% storage available."  
+    done
+  fi  
+
+  if [[ ${#LI_fail[@]} -ne 0 ]]; then
+    STATUS=1
+    for i in ${!LI_fail[@]}; do
+      echo " CRITICAL:  ${LI_fail_fs[$i]} has only ${LI_fail[$i]}% remaining inodes."  
+    done
+  fi  
+
+  if [[ ${#HPCS_fail[@]} -ne 0 ]]; then
+    STATUS=1
+    for i in ${!HPCS_fail[@]}; do
+      echo " CRITICAL:  ${HPCS_fail_fs[$i]} has only ${HPCS_fail[$i]}% storage available."  
+    done
+  fi  
+
+  if [[ ${#HPCI_fail[@]} -ne 0 ]]; then
+    STATUS=1
+    for i in ${!HPCI_fail[@]}; do
+      echo " CRITICAL:  ${HPCI_fail_fs[$i]} has only ${HPCI_fail[$i]}% remaining inodes."  
+    done
+  fi  
+
+  exit $STATUS

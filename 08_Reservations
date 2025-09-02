@@ -21,9 +21,10 @@
 
 #                                                       2025-08-07 Written by Kent Milfeld
 
-  [[ $# != 1 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
-  [[ $1 == t ]] && O=T
-  [[ $1 == v ]] && O=V
+  [[ $# == 0 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
+  [[ $1 =~ t ]] && O=T 
+  [[ $1 =~ v ]] && O=V 
+  [[ ! "$O" =~ [NTV] ]] && echo "USAGE: $0 [-t|-v] # terse|verbose output"
 
   HPC_OSs=(rocky centos fedora ubuntu debian)
   if [[ -f /etc/os-release ]]; then
@@ -197,16 +198,17 @@ fi
 
    if [[ $nres -ne 0 ]]; then
       if [[ $O == V ]]; then
-        echo "RESERVATIONS for All users."
+        echo " RESERVATIONS for All users."
         echo " RESERVATION_NAME    STATE   PARTITION NODES [START  M-D h:m] [Wait:|Used:]  DURATION [Usr:|Acct:|Grp]"
       fi
       if [[ $O == N ]]; then
-        echo "RESERVATIONS for $USER or projects of user."
+        echo " RESERVATIONS: Searched $USER and project (${proj_names[@]}) reservations."
         echo " RESERVATION_NAME  STATE PARTITION [START M-D h:m] [Wait:|Used:]  DURATION [Usr:|Acct:|G:]"
+## TODO  Don't print header, but but NONE on previous line if not reservations found
       fi
    fi
    [[ $nres -eq 0 ]] &&
-      echo "RESERVATIONS NO reservation appear on the system." && exit 0
+      echo " RESERVATIONS: NO reservation appear on the system." && exit 0
 
    my_ress=() 
    for i in ${ndx_ResStartOrder[@]}; do
@@ -286,13 +288,12 @@ fi
      fi
 
    done
+
    if [[ $O == T ]]; then  #Terse Report
      if [[ ${#my_ress[@]}  == 0 ]]; then
-        echo "RESERVATIONS for you:"
-        echo " NONE"
+        echo "RESERVATIONS: None."
      else
-        echo "RESERVATIONS"  
-        echo " ${my_ress[@]} (scontrol show res for details)"
+        echo "RESERVATIONS: ${my_ress[@]} (Run \"checkpoint -v\" for details.)"
      fi
    fi
 

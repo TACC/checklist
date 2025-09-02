@@ -1,10 +1,16 @@
 #!/bin/bash
 
-[[ $# != 1 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
-[[ $1 == t ]] && O=T 
-[[ $1 == v ]] && O=V 
 
-STATUS=0
+#TODO  warning isi project ending soon or near 5% limit
+##TODO fail is 2 percent left
+
+  [[ $# == 0 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
+  [[ $1 =~ t ]] && O=T
+  [[ $1 =~ v ]] && O=V
+  [[ ! "$O" =~ [NTV] ]] && echo "USAGE: $0 [-t|-v] # terse|verbose output"
+
+  STATUS=0
+
   HPC_OSs=(rocky centos fedora ubuntu debian)
   if [[ -f /etc/os-release ]]; then
     output=$( grep ^ID= /etc/os-release ) #e.g. ID="rocky"
@@ -24,21 +30,21 @@ STATUS=0
 
   host_name=`hostname $opts`
 
-for sys in frontera vista stampede ls6; do
-  [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
-done
+  for sys in frontera vista stampede ls6; do
+    [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
+  done
 
-[[ $AT_TACC != yes ]] && echo " ALLOCATIONS" && echo " NONE programmed for this systems." && exit 0
+  [[ $AT_TACC != yes ]] && echo " ALLOCATIONS" && echo " NONE programmed for this systems." && exit 0
 
                   #milfeld:*:1117:825112:milfeld:/home1/00770/milfeld:/bin/bash
-user_info=`getent passwd $USER`
-IFS=":" read -ra usr_etc_pwd <<< "$user_info"  # put fields in /usr_etc_pwd array
+  user_info=`getent passwd $USER`
+  IFS=":" read -ra usr_etc_pwd <<< "$user_info"  # put fields in /usr_etc_pwd array
 
-user=${usr_etc_pwd[0]}
- uid=${usr_etc_pwd[2]}
- gid=${usr_etc_pwd[3]}
-home=${usr_etc_pwd[5]}
-login_shell=${usr_etc_pwd[6]}
+  user=${usr_etc_pwd[0]}
+   uid=${usr_etc_pwd[2]}
+   gid=${usr_etc_pwd[3]}
+  home=${usr_etc_pwd[5]}
+  login_shell=${usr_etc_pwd[6]}
 
 if [[ $AT_TACC == yes ]]; then
   TACC_ACC_DIR="/usr/local/etc/"
@@ -52,17 +58,15 @@ if [[ $AT_TACC == yes ]]; then
   status=$?
   projects=("${projects[@]:1}")  #remove 1st element, user name
   if [[ $status == 0 ]]; then
-    if [[ $O == N ]] || [[ $O == V ]] ; then
-      echo "PROJECTS found (IDs ${projects[@]}, repectively): "
-    fi
-    if [[ $O == T ]] ; then
-      echo "PROJECTS of user $USER."
+    if [[ $O == V ]] ; then
+      echo " PROJECTS found (IDs ${projects[@]}, repectively): "
     fi
   else
-    echo "No Projects found for user $user."
+    echo " PROJECTS: NO PROJECTS FOUND."
     exit 1
   fi
 
+# Project Details
   valid_count=0 expired_count=0
   for proj_id in ${projects[@]}; do
     name_id=( $(grep -E " $proj_id\\b" $proj_map) )  #$proj_map
@@ -90,33 +94,51 @@ if [[ $AT_TACC == yes ]]; then
 
       if [[ $today_no -gt $end_no ]]; then
         expired_count=$(( expired_count + 1 ))
-        if [[ $O == N ]] || [[ $O == V ]] ; then
-          echo -e "  EXPIRED: Project $proj_name has expired ($end_date)\n"
+        if [[ $O == V ]] ; then
+          echo "  EXPIRED: $proj_name expired $end_date"
         fi
         exp_proj+=($proj_name)
+        EXP_proj_date+=("$proj_name $end_date ")
       else
-        if [[ $O == N ]] || [[ $O == V ]] ; then
+        if [[ $O == V ]] ; then
           printf  " ACTIVE : %8s (SUs Alloc:Used:Bal:Exp) %8s %8.0f %8.0f %s \n" \
                   "$proj_name" "${allocate}" "${used}" "${balance}" "$end_date"
         fi
+          PC_remain=$(bc   <<< "100*$balance/$allocate")
           balance=${balance%.*}
           act_proj+=( $proj_name:Bal=$balance)
+          ACT_proj+=( $proj_name )
+          ACT_proj_PCremain+=( "$proj_name ${PC_remain}% " )
+          ACT_proj_bal_PCremain+=( "$proj_name $balance ${PC_remain}%" )
+      fi
+#exp_proj=(CCSC1234 abc1234)   #For testing
+#EXP_proj_date=("CCSC1234 10/10/24"  "abc1234 9/9/23")
+      if [[ $proj_id == ${projects[-1]} ]] && [[ $O == T ]] ; then   #las proj_id
+         [[ ${#exp_proj[@]} -gt 0 ]] && EXP="Expired: (${exp_proj[@]})"
+         [[ ${#act_proj[@]} -gt 0 ]] && ACT="(${ACT_proj_PCremain[@]} %remain)"
+         [[ $valid_count    -gt 0 ]] &&
+           echo " PROJECTS: $ACT $EXP" 
+      fi
+      if [[ $proj_id == ${projects[-1]} ]] && [[ $O == N ]] ; then   #las proj_id
+        #[[ ${#exp_proj[@]} -gt 0 ]] && EXP="Expired: (${exp_proj[@]})"
+         [[ ${#act_proj[@]} -gt 0 ]] || [[ ${#exp_proj[@]} -gt 0 ]] &&
+         echo " PROJECTS: Active/Inactive  Balance(SUs), %Available"
+         [[ ${#act_proj[@]} -gt 0 ]] &&
+         echo " ACTIVE: ${ACT_proj_bal_PCremain[@]}"
+         [[ ${#exp_proj[@]} -gt 0 ]] &&
+         echo " EXPIRED: ${EXP_proj_date[@]}"
       fi
 
-      if [[ $proj_id == ${projects[-1]} ]] && [[ $O == T ]] ; then
-    # if [[ $O == T ]] ; then
-         [[ ${#exp_proj[@]} -gt 0 ]] && EXP="Expired: ${exp_proj[@]}"
-         echo " Active: ${act_proj[@]} $EXP" 
-      fi
     fi
   done
 
+  # FAIL if no accounts valable, WARN if some inactive/expired
   if [[ $valid_count -gt 0 ]]; then 
     if [[ $expired_count -eq $valid_count ]]; then
       echo -e " FAIL: All valid projects are expired.\n"   #FAILURE
       exit 1
     fi
-    [[ $expired_count -gt 0 ]] && exit 3                    #WARNING
+    [[ $expired_count -gt 0 ]] && exit 3                   #WARNING
   fi
 
   exit 0

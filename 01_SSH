@@ -1,23 +1,42 @@
 #!/bin/bash
+# Checks for a specific <code>.pub file and <code> file to
+# be in $HOME/.ssh.  Also, contents of <code>.pub must be
+# in authorized_keys file.
+# SITES should specify a single <code> and <code>.pub in these
+# arrays below (e.g.):
+#  pub_key_files=( id_rsa.pub )
+# priv_key_files=( id_rsa     )
+
+# SITES such as TACC that use multiple keys, but only one type
+# per system should specify multiple keys in the arrays, but
+# only one is expected to be found. 
+
 # 1.) Check permission on ~/.ssh directory
-# 2.) Check permission on ~/.ssh/*_id.pub 
-# 3.) Check permission on ~/.ssh/*_id
+# 2.) Check permission on ~/.ssh/id_*.pub 
+# 3.) Check permission on ~/.ssh/id_
 # 4.) Check permission on ~/.ssh/authorized_keys
 # 5.) Make sure *_id.pub is in authorized_keys
 
-#TODO What if multiple keys?
 #TODO Exist later if 0 keys found (check directory permissions
 #TODO Exist later if OK with multiple keys
 #                                 2025-08-01 Kent Milfeld
 
-  [[ $# != 1 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
-  [[ $1 == t ]] && O=T
-  [[ $1 == v ]] && O=V
+  [[ $# == 0 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
+  [[ $1 =~ t ]] && O=T
+  [[ $1 =~ v ]] && O=V
+  [[ ! "$O" =~ [NTV] ]] && echo "USAGE: $0 [-t|-v] # terse|verbose output"
 
   STATUS=0
 
   HPC_OSs=(rocky centos fedora ubuntu debian)
 
+   SSH_DIR=$HOME/.ssh
+   SSH_DIR=$HOME/.ssh_test
+   SSH_DIR=$HOME/.sshx
+   SSH_DIR=$HOME/.ssh_empty
+   SSH_DIR=$HOME/.ssh_mixed
+   SSH_DIR=$HOME/.ssh_multi
+   SSH_DIR=$HOME/.ssh_noauth
    SSH_DIR=$HOME/.ssh
    pub_key_files=( id_ed25519.pub id_rsa.pub id_ecdsa.pub )
   priv_key_files=( id_ed25519     id_rsa     id_ecdsa )
@@ -42,41 +61,61 @@
     [[ `uname -a` =~ Darwin ]] && OS=darwin
   fi
 
-echo "SSH setup"
+
+# [PASS] 01 SSH: found keys with correct permissions
+
+# [PASS] 01 SSH:  keys and permissions
+#           SSH Found files :    (.ssh id_ed25519.pub id_ed25519 authorized_keys)
+#           Permissions OK for:  (.ssh id_ed25519.pub id_ed25519 authorized_keys)
+
+# [PASS] 01 SSH setup
+#            Found directory pub_key.
+#            Found public key id_ed25519.pub
+#            Found private key id_ed25519
+#            Permissions correct for .ssh:            drwx------
+#            Permissions correct for id_ed25519.pub:  -rw-r--r--
+#            Permissions correct for id_ed25519:      -rw-------
+#            Permissions correct for authorized_keys: -rw-------
+
 
 # SSH Directory
 if [[ ! -d $SSH_DIR ]]; then  # Does $HOME/.ssh exist
    unfound=(${filenames[0]})
-   echo " NO \$HOME/.ssh directory found." && exit 1
+   echo " SSH: ERROR, NO \$HOME/.ssh directory found." && exit 1
 else
   found=(${filenames[0]})
-  [[ $O == N ]] || [[ $O == V ]] &&
-  echo " Found ${functions[0]} ${filenames[1]}."
-  
+
+  [[ $O == V ]] &&
+  echo " SSH:  Setup" &&
+  echo " Found ${functions[0]} ${filenames[0]}, will search for key pair."
 fi
 
 # PUBLIC KEY file(s)
 output=`ls $SSH_DIR/*.pub 2>/dev/null`  #pub key
-if [[ $? != 0 ]]; then
-  echo " NO ${functions[1]} Found (of form \*pub)."
-  STATUS=1
-else   #determine key type
+
+if [[ $? == 0 ]]; then  #determine key type
   for file in ${pub_key_files[@]}; do
     [[ $output =~ $file  ]] && pub_keys+=($file)
   done
+  if [[ ${#pub_keys[@]} == 0 ]] && [[ $STATUS == 0 ]]; then
+    STATUS=1
+    nonsite_pub_keys=$(echo $output | sed  's@'$SSH_DIR/'@@g')
+    echo " SSH: NO HPC-SITE required ${functions[1]} FOUND."
+    echo " But, FOUND ${functions[1]}(s) (${nonsite_pub_keys})"
+    exit 1
+  fi
+else
+  echo " SSH: NO HPC-SITE required ${functions[1]} FOUND."
+  echo " (Searched for ${pub_key_files[@]})."
+  exit 1
 fi
 
 if [[ ${#pub_keys[@]}  == 1 ]]; then
   filenames[1]=${pub_keys[0]}
   found+=(${filenames[1]})
 
-  [[ $O == N ]] || [[ $O == V ]] &&
+  [[ $O == V ]]  &&
     echo " Found ${functions[1]} ${filenames[1]}" && pub_key=${pub_keys[0]}
-fi
-if [[ ${#pub_keys[@]} == 0 ]]; then
-  unfound+=(${filenames[1]})
-  skip=(1)
-  echo " NO ${functions[1]} Found (searched: ${pub_key_files[@]})" && STATUS=1
 fi
 
 # PRIVATE KEY file(s)
@@ -89,32 +128,56 @@ if [[ ${#priv_keys[@]}  == 1 ]]; then
   filenames[2]=${priv_keys[0]}
   found+=(${filenames[2]})
 
-  [[ $O == N ]] || [[ $O == V ]] &&
+  if [[ ! ${filenames[1]} =~ ${filenames[2]} ]]; then
+     echo " SSH: ERROR, Priv/Pub keys DO NOT MATCH (${filenames[1]}, ${filenames[2]})."
+     exit 1
+  fi
+
+  [[ $O == V ]] &&
     echo " Found ${functions[2]} ${filenames[2]}" && priv_key=${priv_keys[0]}
-fi
-if [[ ${#priv_keys[@]} == 0 ]]; then
-  unfound+=(${filenames[2]})
-  skip+=(2)
-  echo " NO ${functions[2]} Found (searched: ${priv_key_files[@]})" && STATUS=1
+
+elif [[ ${#priv_keys[@]} == 0 ]]; then
+  echo " SSH: NO HPC-SITE required ${functions[2]} FOUND."
+  echo " (expected to find: ${filenames[1]%%.pub})"
+  exit 1
+else 
+  if [[ ${priv_keys[@]} =~ ${filenames[1]%%.pub} ]]; then
+    filenames[2]=${filenames[1]%%.pub}
+    found+=(${filenames[2]})
+
+    [[ $O == V ]] &&
+    echo " Found multiple priv. keys (${priv_keys[@]}); using ${filenames[1]%%.pub}." 
+  else
+    echo " SSH: NO ${filenames[1]%%.pub} file FOUND for ${filenames[1]}."
+    [[ $O == V ]] &&
+    echo " Multiple Other HPC-SITE required ${functions[2]}(s) FOUND." &&
+    echo " (found ${functions[2]}(s): ${priv_keys[@]} )"
+    exit 1
+  fi
 fi
 
-# AUTHORIZED_KEYS file
+# AUTHORIZED_KEYS file  -- make sure it exists.
 output=`ls $SSH_DIR/${filenames[3]} 2>/dev/null`  #authorized_keys
 if [[ $? != 0 ]]; then
   unfound+=(${filenames[3]})
-  skip+=(3)
-  echo " NO ${functions[3]} file Found."
-  STATUS=1
+
+  echo " SSH: NO ${functions[3]} file Found."
+  echo "      cat ${filenames[2]} > $SSH_DIR/${filenames[3]}" &&
+  echo "      chmod 600  $SSH_DIR/${filenames[3]}"
+  exit 1
 else
   found+=(${filenames[3]})
 fi
 
-if [[ $O == T ]]; then
+if [[ $O == N ]]; then
   flat_found="${found[@]}" flat_unfound="${unfound[@]}"
-  printf  " SSH Found files :    (%s)\n" "$flat_found"
-  [[ ${#unfound[@]} -gt 0 ]] &&
-  printf " SSH NOT Found files: (%s)\n" "$flat_unfound"
+  echo   " SSH: found keys with correct permissions"
+  printf " Found files :        (%s)\n" "$flat_found"
+ #[[ ${#unfound[@]} -gt 0 ]] &&
+ #printf "SSH NOT Found files: (%s)\n" "$flat_unfound"
 fi
+
+#===========================================================
 
 check_perm(){
 
@@ -136,7 +199,7 @@ check_perm(){
   
   
   if [[ $stat_perm == ${perms[$i]} ]]; then
-    [[ $O == N ]] || [[ $O == V ]] &&
+    [[ $O == V ]] &&
     printf " %-40s %s\n"  "Permissions correct for $name:" "${perms[$i]}"
   else
     return_status=1
@@ -148,19 +211,24 @@ check_perm(){
 
 }
 
+# skip used to avoid permission check. Code no exits if file not found
 for i in ${!filenames[@]}; do
-  if [[ ! "${skip[@]}" =~ $i ]]; then
+ #if [[ ! "${skip[@]}" =~ $i ]]; then
     path_name=$SSH_DIR/${filenames[$i]}
     [[ $i == 0 ]] &&  path_name=$SSH_DIR  #Special, the Directory
 
     check_perm ${path_name} ${perms[$i]} ${set_perms[$i]} $O
 
     [[ $return_status != 0 ]] && STATUS=$return_status
-  fi
+ #fi
 done
 
-if [[ $O == T ]] && [[ $STATUS == 0 ]]; then
+if [[ $O == N ]] && [[ $STATUS == 0 ]]; then
    echo " Permissions OK for:  (${filenames[@]})" 
+fi
+
+if [[ $O == T ]] && [[ $STATUS == 0 ]]; then
+   echo " SSH: found keys with correct permissions"
 fi
 
 exit $STATUS

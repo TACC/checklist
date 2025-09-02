@@ -9,9 +9,12 @@
 # TODO 2.) what about csh (alias module)
 # TODO 2.) means identifying login shell
 
-[[ $# != 1 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
-[[ $1 == t ]] && O=T 
-[[ $1 == v ]] && O=V 
+  [[ $# == 0 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
+  [[ $1 =~ t ]] && O=T 
+  [[ $1 =~ v ]] && O=V 
+  [[ ! "$O" =~ [NTV] ]] && echo "USAGE: $0 [-t|-v] # terse|verbose output"
+
+  STATUS=0
 
   host_name=`hostname -A`
   for sys in frontera vista stampede ls6; do
@@ -22,30 +25,41 @@
     TACC_compiler_families=( nvidia intel oneAPI llvm gcc )
   fi
 
-  echo "MODULES Access and Loads"
-
   output=`type module 2>/dev/null`
   if [[ $? == 0 ]]; then
      cmd=executable
      [[ $output =~ "module is a function" ]] && cmd=function
-     [[ $O == V ]] || [[ $O == N ]] &&
-     echo " The module $cmd was found."
   else
-     echo " No path/type for module command found."
-     echo " Check to make system initialization is defining the module function."
+     echo " No executable or function for module found."
+     echo " Make sure system startup scripts are defining/setting path for \"module\"."
      exit 1
   fi
+
+  type sbatch   >& /dev/null; [[ $? == 0 ]] && batch_sched+=(SLURM         )
+  type qsub     >& /dev/null; [[ $? == 0 ]] && batch_sched+=(PBS_TORQUE_SGE)
+  type bsub     >& /dev/null; [[ $? == 0 ]] && batch_sched+=(LSF           )
+  type llsubmit >& /dev/null; [[ $? == 0 ]] && batch_sched+=(LOADLEVELER   )
+
+  if [[ ${#batch_sched[@]} == 0 ]]; then
+    echo " NO BATCH SUBMISSION COMMAND FOUND (searched: sbatch, qsub, bsub, llsubmit)"
+    echo " Make LMOD or MODULES is installed and/or Batch System module is loaded."
+    exit 1
+  else
+    [[ $O == N ]] || [[ $O == V ]] && echo " MODULES: Environment Managed by ${batch_sched[@]}."
+    [[ $O == V ]] && echo " The module $cmd was found."
+  fi
+
 
 if [[ $AT_TACC == yes ]]; then
 
   output=`ml is-loaded TACC`
   if [[ $? == 0 ]]; then
-    [[ $O == V ]] || [[ $O == N ]] &&
-    printf " %-7s module is loaded.\n"  "TACC"
-    T_string="TACC module loaded. " 
+    [[ $O == V ]] && printf " %-7s module is loaded.\n"  "TACC"
+    TACC_mod="TACC" 
   else
     echo " TACC module is NOT loaded-- a requirement for TACC environments."
-    exit 1
+    echo " If you have reset your own modules, ignore; otherwise submit a ticket."
+    STATUS=1
   fi
   
   type=no_default
@@ -59,10 +73,14 @@ if [[ $AT_TACC == yes ]]; then
 
     if [[ ${#compilers[@]} ==  1 ]]; then
       type=has_default
-      [[ $O == V ]] || [[ $O == N ]] &&
-      printf " %-7s compiler module is in the default module group and is loaded.\n" ${compilers[0]}
-      T_string="$T_string Module ${compilers[0]} is the default compiler module."
+      [[ $O == V ]] &&
+        printf " %-7s compiler module is in the default module group and is loaded.\n" ${compilers[0]}
+      [[ $O == N ]] &&
+        printf " $TACC_mod${TACC_mod:+ and }%-7s compiler loaded in default module group.\n" ${compilers[0]}
+      T_string="$TACC_mod${TACC_mod:+ and }${compilers[0]} Loaded."
+     
     fi
+
     [[ ${#compilers[@]} ==  0 ]] && echo " No compiler found in default system system module." &&  exit 1
     [[ ${#compilers[@]} -gt 1 ]] && echo " More than 1 compiler system found in the default module." && 
                                       echo " Only a single compiler system can be loaded in a module env." &&
@@ -75,20 +93,24 @@ if [[ $AT_TACC == yes ]]; then
       [[ $? == 0 ]] &&  loaded_compilers+=($comp)
     done
   
-    if [[ $O == V ]] || [[ $O == N ]]; then
-      [[ ${#loaded_compilers[@]} ==  1 ]] && printf " %-7s module is the loaded compiler system.\n" \
-                                           ${loaded_compilers[0]}
+    if [[ ${#loaded_compilers[@]} ==  1 ]]; then
+      [[ $O == V ]] &&
+        printf " %-7s module is the loaded compiler system.\n"  ${loaded_compilers[0]}
+      [[ $O == N ]]
+        printf " $TACC_mod${TACC_mod:+ and }%-7s module loaded.\n" ${loaded_compilers[0]}
     fi
+
     [[   ${#loaded_compilers[@]} ==  0 ]] && echo " No loaded compiler system found." &&  exit 1
     [[   ${#loaded_compilers[@]} -gt 1 ]] && echo " More than 1 compiler system found in the loaded module." && 
                                           echo " Only a single compiler system can be loaded in a module env." &&
                                           exit 1
   fi
+
   [[ $O == T ]] &&
-     echo " $T_string"
+     echo " MODULES: $T_string"
 
 fi
-exit 0
+exit $STATUS
 
 #  TACC_compiler_families=( nvidia intel oneAPI llvm gcc)
 #vista $ ml describe

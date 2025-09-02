@@ -58,7 +58,7 @@ sets[oneAPI]="$oneAPI_set"
 
 
 #Check for all known compilers
-echo "COMPILERS Searching Compiler Families (${compiler_families[@]})"
+echo " COMPILERS: Searching Compiler Families (${compiler_families[@]})"
 
 for family in ${compiler_families[@]}; do
 

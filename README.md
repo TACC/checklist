@@ -2,7 +2,7 @@ Checklist
 ==============
 
 Checklist evaluates the access/availability of critical components in User Space for using HPC Systems.
-Checklist 4.0 is a complete rewrite and redesign of the Sanitytool sanitycheck developed at TACC by McLay and Si Liu.
+Checklist 4.0 is a complete rewrite and redesign of the Sanitytool sanitycheck developed at TACC by McLay and Si Liu. Version 4.1 unifies the TACC interface in the check scripts and allows -t|-v (as well at t|v) for terse and verbose options..
 
 #### General:
 
@@ -38,7 +38,7 @@ From these two pieces of information, checklist outputs:
          PASS|FAIL|WARN  ##  <message(s)>
 
          (e.g.)
-          $checklist t   #terse mode
+          $checklist -t   #terse mode
           [PASS] 01 SSH setup
                     Found public key id_ed25519.pub and ...
                     Permissions OK for: .ssh id_ed25519 ...
@@ -80,10 +80,10 @@ in C, exit in SHELL) value for the bash `checklist` command to capture
 
          $( type my_app >/dev/null 2>&1 )           # check 4 my_app, no output
          if [[ $? == 0 ]]; then
-           echo " my_app is present."               # message & status (0=PASS)
+           echo " APPS: my_app is present."         # message & status (0=PASS)
            exit 0    
          else
-           echo " my_app is NOT present (check uses \"type\" cmd)."
+           echo " APPS: my_app is NOT present (check uses \"type\" cmd)."
            echo " Check \$PATH variable."
            echo " Acquire from https/github.com/$USER/my_app."
            exit 1                                            # status (1=FAIL)
@@ -91,11 +91,10 @@ in C, exit in SHELL) value for the bash `checklist` command to capture
 ```
 
   
-> When multiple lines are printed include 10 spaces after the first line so that
-the output lines up for the checklist reporting (e\.g\. for above):
+> OUTPUT (FAILED):
        
 ```
-         [FAIL] 01 APPS checking for my_app in $PATH."
+         [FAIL] 01 APPS: checking for my_app in $PATH."
                    my_app is NOT present (check uses "type" cmd).
                    Check $PATH variable.
                    Acquire from https/github.com/>username>/my_app."
@@ -104,25 +103,26 @@ the output lines up for the checklist reporting (e\.g\. for above):
 * BASH Template verbosity standard checklist options
 ```
         #!/bin/bash
-        [[ $# != 1 ]] && O=N    #Command line options t=Terse,v=Verbose, default Normal
-        [[ $1 == t ]] && O=T 
-        [[ $1 == v ]] && O=V 
+        [[ $# !=  1 ]] && O=N    #Command line options t=Terse,v=Verbose, default Normal
+        [[ $1 == -t ]] && O=T 
+        [[ $1 == -v ]] && O=V 
 
         echo "APPS checking for my_app in \$PATH"  # line 1 general description
 
-        $( type my_app >/dev/null 2>&1 ) # check 4 my_app, no output
+        $( type my_app >/dev/null 2>&1 )            # check 4 my_app, no output
         if [[ $? == 0 ]]; then
-          echo " my_app is present."        # message and status (0=PASS)
-          exit 0                            #return status    
-        else
-          [[ $O == T ]]  &&                               # terse
-            echo " my_app was NOT FOUND."
-          [[ $O == N ]] || [[ $O == V ]] &&               # normal or verbose
-            echo " my_app was NOT FOUND by \"type\" cmd." &&  
+          echo " APPS: my_app is present."          # message
+          exit 0                                    # return status (0 = PASS)
+
+        else                                        # FAIL CASE
+          [[ $O == T ]]  &&                                        # terse
+            echo " APPS: my_app was NOT FOUND."
+          [[ $O == N ]] || [[ $O == V ]] &&                        # norm|verb
+            echo " APPS: my_app was NOT FOUND by \"type\" cmd." &&  
             echo " Check \$PATH variable or default module setup."
-          [[ $O == V ]] &&                                #verbose
+          [[ $O == V ]] &&                                         # verb
             echo " Acquire my_app from https//:github.com/$USER/my_app."
-          exit 1                                          # return status
+          exit 1                                      # return status (1=FAIL)
         fi  
 ```
 

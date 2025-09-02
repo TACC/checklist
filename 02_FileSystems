@@ -10,9 +10,10 @@
 ##TODO  STOCKYARD on all sys (including vista stockyard=work)
 ##TODO  What about aptainer and singularity
 
-[[ $# != 1 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
-[[ $1 == t ]] && O=T
-[[ $1 == v ]] && O=V
+  [[ $# == 0 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
+  [[ $1 =~ t ]] && O=T 
+  [[ $1 =~ v ]] && O=V 
+  [[ ! "$O" =~ [NTV] ]] && echo "USAGE: $0 [-t|-v] # terse|verbose output"
 
 HPC_OSs=(rocky centos fedora ubuntu debian)
   if [[ -f /etc/os-release ]]; then
@@ -34,13 +35,16 @@ STATUS=0
 
 [[ $OS == darwin ]]          && opts='-s'
 [[ ${HPC_OSs[@]} =~ $OS   ]] && opts='-A'
+
 host_name=`hostname $opts`
 for sys in frontera vista stampede ls6; do
   [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
 done
+
 if [[ $AT_TACC == yes ]]; then
-   USER_STORAGE_DIRS=( HOME  SCRATCH WORK  STOCKYARD )
-  USER_STORAGE_PERMS=( drwx  drwx    drwx  drwx     )
+  USER_STORAGE_DIRS=(  HOME  SCRATCH WORK  STOCKYARD )
+  USER_STORAGE_PERMS=( drwx  drwx    drwx  drwx      )
+  USER_STORAGE_CHMOD=( u+rwx u+rwx   u+rwx u+rwx     )
   CRITICAL_STORAGE_DIRS=( HOME )
 fi
 if [[ $OS == darwin ]]; then
@@ -51,22 +55,26 @@ fi
 
 if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
 
- #echo "STORAGE Environment Variable Definition & Directory Perms." 
-  echo "STORAGE ENV VARS & PERMS"
+  [[ $O == V ]] &&
+    echo " FILE SYSTEMS:  Environment Variables and User Access"
+  [[ $O == N ]]  &&
+    echo " FILE SYSTEMS:  Definition & Access to (${USER_STORAGE_DIRS[@]})"
+
+# VARIABLE DEFINITIONS
 
   # Determine if variables are defined
   for i in ${!USER_STORAGE_DIRS[@]}; do
       user_dir=${USER_STORAGE_DIRS[$i]}
       if [[ ! -z ${!user_dir} ]]; then
-         [[ $O == N ]] || [[ $O == V ]] &&
+         [[ $O == V ]] &&
          printf " %-9s Variable  is defined.\n" $user_dir
          found_pathnames+=(${!user_dir})
          found_storage_dirs+=($user_dir)
-         found_storage_perms+=(${USER_STORAGE_PERMS[@]})
-
+         found_storage_perms+=(${USER_STORAGE_PERMS[$i]})
+         found_storage_chmod+=(${USER_STORAGE_CHMOD[$i]})
          defined+=($user_dir)
       else
-         [[ $O == N ]] || [[ $O == V ]] &&
+         [[ $O == V ]] &&
          printf " %-9s Variable NOT defined.\n" $user_dir
         #[[ $STATUS != 1 ]] && STATUS=3  #  retain critical status
         #[[ ${CRITICAL_STORAGE_DIRS[@]} =~ $user_dir ]] && STATUS=1
@@ -75,11 +83,6 @@ if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
          undefined+=($user_dir)
       fi  
   done
-  if [[ $O == T ]]; then 
-    [[ ${#defined[@]}   -gt 0 ]] &&   def_part="DEFINED Vars: ${defined[@]}"
-    [[ ${#undefined[@]} -gt 0 ]] && undef_part="UNDEFINED VARS: ${undefined[@]} - "
-    echo " ${undef_part}$def_part"
-  fi
 
   if [[ ${#found_storage_dirs[@]} == 0 ]]; then
     echo " None of the following User Storage Variables are defined:"
@@ -87,33 +90,30 @@ if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
     STATUS=1  #redundant, JIC some directories become only warnings in future
   fi
 
+# PERMISSIONS
   [[ $OS == darwin ]]          && opts='-f %Sp'
   [[ ${HPC_OSs[@]} =~ $OS   ]] && opts='-c %A'
 
   # Check USER permission of directories for which variables are defined.
   if [[ ${#found_storage_dirs[@]} -gt 0 ]]; then
-    for i in ${!found_storage_dirs[@]}; do
+    for i in   ${!found_storage_dirs[@]}; do
        user_dir=${found_storage_dirs[$i]}
        stat_perm=`stat $opts ${found_pathnames[$i]}`
        status=$? 
+       stat_perm=${stat_perm:0:4}
+
        if [[ $stat_perm =~ ^${found_storage_perms[$i]} ]]; then
-          [[ $O == N ]] || [[ $O == V ]] &&
+         [[ $O == V ]] &&
           printf " %-9s directory USER permissions are valid (%s)..\n" \
                  $user_dir ${found_storage_perms[$i]}
           valid+=($user_dir)
        else
-          [[ $O == N ]] || [[ $O == V ]] &&
-          printf " %-9s directory USER permissions (%s) NOT valid (required: %s).\n" \
-                 $user_dir $stat_perm ${found_storage_perms[$i]}
           STATUS=1
           invalid+=($user_dir)
+          found_expected+=("(${stat_perm} : ${found_storage_perms[$i]})")
+          fix_perms+=("chmod ${found_storage_chmod[$i]} ${found_pathnames[$i]}")
       fi  
     done
-  fi
-  if [[ $O == T ]]; then 
-    [[ ${#valid[@]}   -gt 0 ]] &&   val_part="VALID Perms: ${valid[@]}"
-    [[ ${#invalid[@]} -gt 0 ]] && inval_part="INVALID PERMS: ${invalid[@]} - "
-    echo " ${inval_part}$val_part"
   fi
 
   # test writing/reading from USER directories (that mount is correct)
@@ -123,5 +123,32 @@ if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
     done
 
   fi
+
+# End of Checks, Print T (terse) message
+
+  if [[ ${#invalid[@]} -eq 0 ]] &&  [[ ${#undefined[@]} -eq 0 ]]; then
+      [[ $O == T ]] && 
+        echo " FILE SYSTEMS: Defined and Accessible (${defined[@]})"
+  fi
+  [[ $O == N ]] && 
+    echo " DEFINED VARIABLES: (${defined[@]})" &&
+    echo " USER PERMISSIONS OK rwx: (${valid[@]})"
+
+  if [[ ${#invalid[@]} -ne 0 ]] ||  [[ ${#undefined[@]} -ne 0 ]]; then
+    [[ $O == T ]] &&
+      echo " FILE SYSTEMS: Defined and Accessible (${defined[@]})"
+
+    if [[ ${#undefined[@]} -gt 0 ]]; then
+      echo " UNDEFINED VARS: ${undefined[@]}"
+      echo "   Make sure your startup scripts have not unset this (these) variable(s)."
+    fi
+    if [[ ${#invalid[@]}   -gt 0 ]]; then
+      for i in ${!invalid[@]}; do 
+        echo " INCORRECT USER PERMISSIONS for ${invalid[$i]} found:expected ${found_expected[$i]}"
+        echo "   Correct with \"${fix_perms[$i]}\""
+      done
+    fi
+  fi
+
 fi
 exit $STATUS
