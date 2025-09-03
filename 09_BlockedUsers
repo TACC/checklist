@@ -22,8 +22,8 @@ STATUS=0
     eval $output
     OS=$ID
     if [[ ! ${HPC_OSs[@]} =~ $OS ]]; then
-       echo " internal ERROR: could not get OS from /etc/os-release"
-       echo "   search list ( ${HPC_OSs[@]} )"
+       echo "internal ERROR: could not get OS from /etc/os-release"
+       echo "  search list ( ${HPC_OSs[@]} )"
        exit 1
     fi
   else
@@ -38,7 +38,7 @@ STATUS=0
     [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
   done
   [[ $AT_TACC != yes ]] && 
-     echo " QUEUE ACCESS: System is not configured to block queue access." && exit 0
+     echo "QUEUE ACCESS: System is not configured to block queue access." && exit 0
 
 if [[ $AT_TACC == yes ]]; then
   ACL_DIR=/etc/slurm
@@ -69,25 +69,25 @@ if [[ $AT_TACC == yes ]]; then
       status=$?
 
       [[ $status != 0 ]] && message="No message (reason) for blocking was included in the filter."
-      echo " $message"
+      echo "$message"
       exit 1
 
     else
       [[ $O == T ]] &&
-        echo " QUEUE ACCESS:  No Restrictions."
+        echo "QUEUE ACCESS:  No Restrictions."
       [[ $O == N ]] &&
-        echo " QUEUE ACCESS: Checking block-user filter." &&
-        echo " $USER has access to all queues."
+        echo "QUEUE ACCESS: Checking block-user filter." &&
+        echo "$USER has access to all queues."
       [[ $O == V ]] &&
-        echo " QUEUE ACCESS: Checking block-user filter ($filter_path)." &&
-        echo " $USER has access to all queues."
+        echo "QUEUE ACCESS: Checking block-user filter ($filter_path)." &&
+        echo "$USER has access to all queues."
 
     fi 
   else
-    echo " QUEUE ACCESS: NO \"ALL =\" line found in public queue ACL file."
-    echo " (The should be present and have at least \"root\" included."
-    echo " Please submit a ticket to TACC help with this report, thanks!"
-    echo " If job submission works, don't consider this a problem."
+    echo "QUEUE ACCESS: NO \"ALL =\" line found in public queue ACL file."
+    echo "(The should be present and have at least \"root\" included."
+    echo "Please submit a ticket to TACC help with this report, thanks!"
+    echo "If job submission works, don't consider this a problem."
     STATUS=3
   fi
 fi

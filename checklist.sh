@@ -75,24 +75,24 @@ for check in ${clist[@]}; do
     # line1=$(sed 's/'$word1'/\\e[0;36;1m'$word1'\\e[0m/' <<< $line1)
       line1=$( head -1     <<< "$output")
       lines=$( tail -n +2  <<< "$output")
-      lines=$(sed 's/^/          /' <<< "$lines")
+      lines=$(sed 's/^/           /' <<< "$lines")
 
   if [[ $status == 0 ]]; then
       printf " [${GRNB}PASS${RESET}]"
       printf " %2s "  "$NO"
-      printf "${GRN}$line1${RESET}\n"
+      printf "${GRN}%s${RESET}\n" "$line1"
       printf "%s\n"  "$lines"
   elif [[  $status == 1 ]]; then
      #echo ""           # Space failures out and colorize them
       printf " [${REDB}FAIL${RESET}]"
       printf " %2s" $NO
-      printf " ${GRN}$line1${RESET}\n"
-      printf "${RED}$lines${RESET}\n"
+      printf " ${GRN}%s${RESET}\n" "$line1"
+      printf "${RED}%s${RESET}\n"  "$lines"
   else
       printf " [${GLDB}WARN${RESET}]"
       printf " %2s" $NO
-      printf " ${GRN}$line1${RESET}\n"
-      printf "${GLD}$lines${RESET}\n"
+      printf " ${GRN}%s${RESET}\n" "$line1"
+      printf "${GLD}%s${RESET}\n"  "$lines"
   fi
 
 done

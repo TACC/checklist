@@ -32,8 +32,8 @@
     eval $output
     OS=$ID
     if [[ ! ${HPC_OSs[@]} =~ $OS ]]; then
-       echo " internal ERROR: could not get OS from /etc/os-release"
-       echo "   search list ( ${HPC_OSs[@]} )"
+       echo "internal ERROR: could not get OS from /etc/os-release"
+       echo "  search list ( ${HPC_OSs[@]} )"
        exit 1
     fi
   else
@@ -49,7 +49,7 @@
   done
 
 if [[ ! $AT_TACC == yes ]]; then
-  echo " BATCH RESERVATIONS" && echo " Checklist not configured for this system." && exit 0
+  echo "BATCH RESERVATIONS" && echo "Checklist not configured for this system." && exit 0
 fi
 
 # PROJECT INFORMATION
@@ -198,17 +198,17 @@ fi
 
    if [[ $nres -ne 0 ]]; then
       if [[ $O == V ]]; then
-        echo " RESERVATIONS for All users."
-        echo " RESERVATION_NAME    STATE   PARTITION NODES [START  M-D h:m] [Wait:|Used:]  DURATION [Usr:|Acct:|Grp]"
+        echo "RESERVATIONS for All users."
+        echo "RESERVATION_NAME    STATE   PARTITION NODES [START  M-D h:m] [Wait:|Used:]  DURATION [Usr:|Acct:|Grp]"
       fi
       if [[ $O == N ]]; then
-        echo " RESERVATIONS: Searched $USER and project (${proj_names[@]}) reservations."
-        echo " RESERVATION_NAME  STATE PARTITION [START M-D h:m] [Wait:|Used:]  DURATION [Usr:|Acct:|G:]"
+        echo "RESERVATIONS: Searched $USER and project (${proj_names[@]}) reservations."
+        echo "RESERVATION_NAME  STATE PARTITION [START M-D h:m] [Wait:|Used:]  DURATION [Usr:|Acct:|G:]"
 ## TODO  Don't print header, but but NONE on previous line if not reservations found
       fi
    fi
    [[ $nres -eq 0 ]] &&
-      echo " RESERVATIONS: NO reservation appear on the system." && exit 0
+      echo "RESERVATIONS: NO reservation appear on the system." && exit 0
 
    my_ress=() 
    for i in ${ndx_ResStartOrder[@]}; do
@@ -283,8 +283,8 @@ fi
       #  [[ $uses_grp_access == yes ]] && [[ $O == N ]] && ACCESS="[Usr:|Acct:|G:]"
       #  echo " RESERVATION_NAME  STATE PARTITION [START M-D h:m] [Wait:|Used:]  DURATION $ACCESS"
             #         RN    ST PART   S  WUG  UAG
-             printf " %16.16s%7s%10s%15s%25s  %s\n" \
-                      $RN  $STATE  $PART "$start_time" "$WAITorUSED_Duration" "$UAG"
+             printf "%16.16s%7s%10s%15s%25s  %s\n" \
+                     $RN  $STATE  $PART "$start_time" "$WAITorUSED_Duration" "$UAG"
      fi
 
    done

@@ -17,8 +17,8 @@
     eval $output
     OS=$ID
     if [[ ! ${HPC_OSs[@]} =~ $OS ]]; then
-       echo " internal ERROR: could not get OS from /etc/os-release"
-       echo "   search list ( ${HPC_OSs[@]} )"
+       echo "internal ERROR: could not get OS from /etc/os-release"
+       echo "  search list ( ${HPC_OSs[@]} )"
        exit 1
     fi
   else
@@ -34,7 +34,7 @@
     [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
   done
 
-  [[ $AT_TACC != yes ]] && echo " ALLOCATIONS" && echo " NONE programmed for this systems." && exit 0
+  [[ $AT_TACC != yes ]] && echo "ALLOCATIONS" && echo "NONE programmed for this systems." && exit 0
 
                   #milfeld:*:1117:825112:milfeld:/home1/00770/milfeld:/bin/bash
   user_info=`getent passwd $USER`
@@ -59,10 +59,10 @@ if [[ $AT_TACC == yes ]]; then
   projects=("${projects[@]:1}")  #remove 1st element, user name
   if [[ $status == 0 ]]; then
     if [[ $O == V ]] ; then
-      echo " PROJECTS found (IDs ${projects[@]}, repectively): "
+      echo "PROJECTS found (IDs ${projects[@]}, repectively): "
     fi
   else
-    echo " PROJECTS: NO PROJECTS FOUND."
+    echo "PROJECTS: NO PROJECTS FOUND."
     exit 1
   fi
 
@@ -82,8 +82,8 @@ if [[ $AT_TACC == yes ]]; then
        balance=${usage[6]}
 
     if [[ ${#usage[@]} -ne 7 ]]; then
-        echo -e " WARNING: invalid account line for $proj_name:\n" \
-                "          $usage_line"
+        echo -e "WARNING: invalid account line for $proj_name:\n" \
+                "         $usage_line"
                   #MCB22024:Vista:2022-04-26:2027-01-31:10000:3.496:9996.504
         STATUS=3
     else
@@ -95,13 +95,13 @@ if [[ $AT_TACC == yes ]]; then
       if [[ $today_no -gt $end_no ]]; then
         expired_count=$(( expired_count + 1 ))
         if [[ $O == V ]] ; then
-          echo "  EXPIRED: $proj_name expired $end_date"
+          echo "EXPIRED: $proj_name expired $end_date"
         fi
         exp_proj+=($proj_name)
         EXP_proj_date+=("$proj_name $end_date ")
       else
         if [[ $O == V ]] ; then
-          printf  " ACTIVE : %8s (SUs Alloc:Used:Bal:Exp) %8s %8.0f %8.0f %s \n" \
+          printf  "ACTIVE : %8s (SUs Alloc:Used:Bal:Exp) %8s %8.0f %8.0f %s \n" \
                   "$proj_name" "${allocate}" "${used}" "${balance}" "$end_date"
         fi
           PC_remain=$(bc   <<< "100*$balance/$allocate")
@@ -117,16 +117,16 @@ if [[ $AT_TACC == yes ]]; then
          [[ ${#exp_proj[@]} -gt 0 ]] && EXP="Expired: (${exp_proj[@]})"
          [[ ${#act_proj[@]} -gt 0 ]] && ACT="(${ACT_proj_PCremain[@]} %remain)"
          [[ $valid_count    -gt 0 ]] &&
-           echo " PROJECTS: $ACT $EXP" 
+           echo "PROJECTS: $ACT $EXP" 
       fi
       if [[ $proj_id == ${projects[-1]} ]] && [[ $O == N ]] ; then   #las proj_id
         #[[ ${#exp_proj[@]} -gt 0 ]] && EXP="Expired: (${exp_proj[@]})"
          [[ ${#act_proj[@]} -gt 0 ]] || [[ ${#exp_proj[@]} -gt 0 ]] &&
-         echo " PROJECTS: Active/Inactive  Balance(SUs), %Available"
+         echo "PROJECTS: Active/Inactive  Balance(SUs), %Available"
          [[ ${#act_proj[@]} -gt 0 ]] &&
-         echo " ACTIVE: ${ACT_proj_bal_PCremain[@]}"
+         echo "ACTIVE: ${ACT_proj_bal_PCremain[@]}"
          [[ ${#exp_proj[@]} -gt 0 ]] &&
-         echo " EXPIRED: ${EXP_proj_date[@]}"
+         echo "EXPIRED: ${EXP_proj_date[@]}"
       fi
 
     fi
@@ -135,7 +135,7 @@ if [[ $AT_TACC == yes ]]; then
   # FAIL if no accounts valable, WARN if some inactive/expired
   if [[ $valid_count -gt 0 ]]; then 
     if [[ $expired_count -eq $valid_count ]]; then
-      echo -e " FAIL: All valid projects are expired.\n"   #FAILURE
+      echo -e "FAIL: All valid projects are expired.\n"   #FAILURE
       exit 1
     fi
     [[ $expired_count -gt 0 ]] && exit 3                   #WARNING

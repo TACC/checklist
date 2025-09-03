@@ -53,8 +53,8 @@
     eval $output
     OS=$ID
     if [[ ! ${HPC_OSs[@]} =~ $OS ]]; then
-       echo " internal ERROR: could not get OS from /etc/os-release"
-       echo "   search list ( ${HPC_OSs[@]} )"
+       echo "internal ERROR: could not get OS from /etc/os-release"
+       echo "  search list ( ${HPC_OSs[@]} )"
        exit 1
     fi
   else
@@ -81,13 +81,13 @@
 # SSH Directory
 if [[ ! -d $SSH_DIR ]]; then  # Does $HOME/.ssh exist
    unfound=(${filenames[0]})
-   echo " SSH: ERROR, NO \$HOME/.ssh directory found." && exit 1
+   echo "SSH: ERROR, NO \$HOME/.ssh directory found." && exit 1
 else
   found=(${filenames[0]})
 
   [[ $O == V ]] &&
-  echo " SSH:  Setup" &&
-  echo " Found ${functions[0]} ${filenames[0]}, will search for key pair."
+  echo "SSH:  Setup" &&
+  echo "Found ${functions[0]} ${filenames[0]}, will search for key pair."
 fi
 
 # PUBLIC KEY file(s)
@@ -100,13 +100,13 @@ if [[ $? == 0 ]]; then  #determine key type
   if [[ ${#pub_keys[@]} == 0 ]] && [[ $STATUS == 0 ]]; then
     STATUS=1
     nonsite_pub_keys=$(echo $output | sed  's@'$SSH_DIR/'@@g')
-    echo " SSH: NO HPC-SITE required ${functions[1]} FOUND."
-    echo " But, FOUND ${functions[1]}(s) (${nonsite_pub_keys})"
+    echo "SSH: NO HPC-SITE required ${functions[1]} FOUND."
+    echo "But, FOUND ${functions[1]}(s) (${nonsite_pub_keys})"
     exit 1
   fi
 else
-  echo " SSH: NO HPC-SITE required ${functions[1]} FOUND."
-  echo " (Searched for ${pub_key_files[@]})."
+  echo "SSH: NO HPC-SITE required ${functions[1]} FOUND."
+  echo "(Searched for ${pub_key_files[@]})."
   exit 1
 fi
 
@@ -115,7 +115,7 @@ if [[ ${#pub_keys[@]}  == 1 ]]; then
   found+=(${filenames[1]})
 
   [[ $O == V ]]  &&
-    echo " Found ${functions[1]} ${filenames[1]}" && pub_key=${pub_keys[0]}
+    echo "Found ${functions[1]} ${filenames[1]}" && pub_key=${pub_keys[0]}
 fi
 
 # PRIVATE KEY file(s)
@@ -129,16 +129,16 @@ if [[ ${#priv_keys[@]}  == 1 ]]; then
   found+=(${filenames[2]})
 
   if [[ ! ${filenames[1]} =~ ${filenames[2]} ]]; then
-     echo " SSH: ERROR, Priv/Pub keys DO NOT MATCH (${filenames[1]}, ${filenames[2]})."
+     echo "SSH: ERROR, Priv/Pub keys DO NOT MATCH (${filenames[1]}, ${filenames[2]})."
      exit 1
   fi
 
   [[ $O == V ]] &&
-    echo " Found ${functions[2]} ${filenames[2]}" && priv_key=${priv_keys[0]}
+    echo "Found ${functions[2]} ${filenames[2]}" && priv_key=${priv_keys[0]}
 
 elif [[ ${#priv_keys[@]} == 0 ]]; then
-  echo " SSH: NO HPC-SITE required ${functions[2]} FOUND."
-  echo " (expected to find: ${filenames[1]%%.pub})"
+  echo "SSH: NO HPC-SITE required ${functions[2]} FOUND."
+  echo "(expected to find: ${filenames[1]%%.pub})"
   exit 1
 else 
   if [[ ${priv_keys[@]} =~ ${filenames[1]%%.pub} ]]; then
@@ -146,12 +146,12 @@ else
     found+=(${filenames[2]})
 
     [[ $O == V ]] &&
-    echo " Found multiple priv. keys (${priv_keys[@]}); using ${filenames[1]%%.pub}." 
+    echo "Found multiple priv. keys (${priv_keys[@]}); using ${filenames[1]%%.pub}." 
   else
-    echo " SSH: NO ${filenames[1]%%.pub} file FOUND for ${filenames[1]}."
+    echo "SSH: NO ${filenames[1]%%.pub} file FOUND for ${filenames[1]}."
     [[ $O == V ]] &&
-    echo " Multiple Other HPC-SITE required ${functions[2]}(s) FOUND." &&
-    echo " (found ${functions[2]}(s): ${priv_keys[@]} )"
+    echo "Multiple Other HPC-SITE required ${functions[2]}(s) FOUND." &&
+    echo "(found ${functions[2]}(s): ${priv_keys[@]} )"
     exit 1
   fi
 fi
@@ -161,7 +161,7 @@ output=`ls $SSH_DIR/${filenames[3]} 2>/dev/null`  #authorized_keys
 if [[ $? != 0 ]]; then
   unfound+=(${filenames[3]})
 
-  echo " SSH: NO ${functions[3]} file Found."
+  echo "SSH: NO ${functions[3]} file Found."
   echo "      cat ${filenames[2]} > $SSH_DIR/${filenames[3]}" &&
   echo "      chmod 600  $SSH_DIR/${filenames[3]}"
   exit 1
@@ -171,8 +171,8 @@ fi
 
 if [[ $O == N ]]; then
   flat_found="${found[@]}" flat_unfound="${unfound[@]}"
-  echo   " SSH: found keys with correct permissions"
-  printf " Found files :        (%s)\n" "$flat_found"
+  echo   "SSH: found keys with correct permissions"
+  printf "Found files :        (%s)\n" "$flat_found"
  #[[ ${#unfound[@]} -gt 0 ]] &&
  #printf "SSH NOT Found files: (%s)\n" "$flat_unfound"
 fi
@@ -203,10 +203,10 @@ check_perm(){
     printf " %-40s %s\n"  "Permissions correct for $name:" "${perms[$i]}"
   else
     return_status=1
-    echo " FAILED Permissions on $short_pathname are incorrect."
-    echo "   Found:     $stat_perm permissions for $name"
-    echo "   Should be: ${perms[$i]}"
-    echo "   Execute:   chmod ${set_perms[$i]} $short_pathname"
+    echo "SSH: FAILED Permissions on $short_pathname are incorrect."
+    echo "     Found:     $stat_perm permissions for $name"
+    echo "     Should be: ${perms[$i]}"
+    echo "     Execute:   chmod ${set_perms[$i]} $short_pathname"
   fi
 
 }
@@ -224,11 +224,11 @@ for i in ${!filenames[@]}; do
 done
 
 if [[ $O == N ]] && [[ $STATUS == 0 ]]; then
-   echo " Permissions OK for:  (${filenames[@]})" 
+   echo "Permissions OK for:  (${filenames[@]})" 
 fi
 
 if [[ $O == T ]] && [[ $STATUS == 0 ]]; then
-   echo " SSH: found keys with correct permissions"
+   echo "SSH: found keys with correct permissions"
 fi
 
 exit $STATUS

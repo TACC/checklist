@@ -21,20 +21,20 @@ type llsubmit >& /dev/null
 [[ $? == 0 ]] && batch_sched+=(LOADLEVELER   ) && sched_cmds=(llsubmit llcancel llq)
 
 if [[ ${#batch_sched[@]} -gt 1 ]]; then
-   echo " BATCH: System error found multiple managers (${batch_sched[@]})"
+   echo "BATCH: System error found multiple managers (${batch_sched[@]})"
    exit 1
 fi
 
 #batch_sched=()
 if [[ ${#batch_sched[@]} == 0 ]]; then
-   echo " BATCH: No BATCH MANAGER FOUND. Checked for: "
-   echo " Checked for SLURM,  PBS_TORQUE_SGE, LSF  and LOADLEVER with commands:"
-   echo "             sbatch, qsub,           bsub,    llsubmit, respectively."
+   echo "BATCH: No BATCH MANAGER FOUND. Checked for: "
+   echo "Checked for SLURM,  PBS_TORQUE_SGE, LSF  and LOADLEVER with commands:"
+   echo "            sbatch, qsub,           bsub,    llsubmit, respectively."
    exit 1
 elif [[ ${#batch_sched[@]} == 1 ]]; then
    BATCH_man=${batch_sched[@]}
    [[ $O == V ]] &&
-     echo " BATCH:  Batch Manager is ${batch_sched[0]}"
+     echo "BATCH:  Batch Manager is ${batch_sched[0]}"
 fi
 
 #host_name=`hostname -A`
@@ -61,12 +61,12 @@ done
 if [[ ${#sched_cmds[@]} -eq ${#found_cmds[@]} ]]; then
    
    [[ $O == V ]] &&
-     echo " All BATCH scheduler command(s) found: ${found_cmds[@]}"
+     echo "All BATCH scheduler command(s) found: ${found_cmds[@]}"
    [[ $O == N ]] &&
-     echo " BATCH:  All ${batch_sched[0]} cmds found: ${found_cmds[@]}."
+     echo "BATCH:  All ${batch_sched[0]} cmds found: ${found_cmds[@]}."
 else
-   echo " Only found BATCH scheduler command(s): ${found_cmds[@]}"
-   echo " Could not find the BATCH command(s): ${not_found_cmds[@]}"
+   echo "Only found BATCH scheduler command(s): ${found_cmds[@]}"
+   echo "Could not find the BATCH command(s): ${not_found_cmds[@]}"
    exit 1
 fi
 
@@ -77,16 +77,16 @@ if [[ ${batch_sched[@]} == SLURM ]]; then
   queue_count=`sinfo --noheader -o "   %10P %5a" | wc -l`
      up_count=`echo $q_status | grep -o '\bup\b' | wc -l`
   
-  [[ $up_count == 0 ]]             && echo " BATCH: NO QUEUES ARE UP"  && exit 1
+  [[ $up_count == 0 ]]             && echo "BATCH: NO QUEUES ARE UP"  && exit 1
   [[ $queue_count -ne $up_count ]] && STATUS=1
   
   if [[ $O == V ]]; then
-    echo " PARTITION  AVAILABILITY" &&
+    echo "PARTITION  AVAILABILITY" &&
     echo "$q_status"
   fi
   
   if [[ $queue_count -eq $up_count ]]; then 
-    [[ $O == V ]] && echo " All Queues are UP." 
+    [[ $O == V ]] && echo "All Queues are UP." 
   fi
 
     not_up_status=$(sinfo --noheader -o "(%P: %a)" | grep -v '\bup\b')
@@ -95,17 +95,17 @@ if [[ ${batch_sched[@]} == SLURM ]]; then
     if [[ $O == N  ]]; then
           up=( $(sinfo --noheader -o "%P %a" | grep    '\b\up\b' | sed 's/up//') )
       not_up=( $(sinfo --noheader -o "%P %a" | grep -v '\b\up\b' | sed 's/up//') )
-      [[ ${#up[@]}     -gt 0 ]] && echo " Queues   UP: ${up[@]}"
-      [[ ${#not_up[@]} -gt 0 ]] && echo " Queues DOWN: ${not_up[@]}"
+      [[ ${#up[@]}     -gt 0 ]] && echo "Queues   UP: ${up[@]}"
+      [[ ${#not_up[@]} -gt 0 ]] && echo "Queues DOWN: ${not_up[@]}"
     fi
 
     if [[ $queue_count -eq $up_count ]]; then
       [[ $O == T  ]] &&
-        echo " QUEUES: ALL UP."
+        echo "QUEUES: ALL UP."
     else
       if [[ $O == T  ]]; then
         not_up_status=$(sinfo --noheader -o "(%P: %a)" | grep -v '\bup\b')
-        echo " QUEUES: DOWNED  $not_up_status"
+        echo "QUEUES: DOWNED  $not_up_status"
       fi
       STATUS=3
     fi

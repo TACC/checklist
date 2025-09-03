@@ -13,8 +13,8 @@
     eval $output
     OS=$ID
     if [[ ! ${HPC_OSs[@]} =~ $OS ]]; then
-       echo " internal ERROR: could not get OS from /etc/os-release"
-       echo "   search list ( ${HPC_OSs[@]} )"
+       echo "internal ERROR: could not get OS from /etc/os-release"
+       echo "  search list ( ${HPC_OSs[@]} )"
        exit 1
     fi  
   else
@@ -63,15 +63,15 @@
   # Print header
   I_x='(M)'
   [[ $O == V ]] || [[ $O == N ]]  &&
-    echo " FILESYSTEM QUOTAS: "   &&
-    printf " %-${NAME_sp}s  Usage(GB)  Limit(GB)  %%Used  -  Inodes%s  Limit%s  %%Used\n" \
+    echo "FILESYSTEM QUOTAS: "   &&
+    printf "%-${NAME_sp}s  Usage(GB)  Limit(GB)  %%Used  -  Inodes%s  Limit%s  %%Used\n" \
             "Disk" "$I_x" "$I_x"
 
   OS=`uname`
   [[ $OS == Linux  ]] && df_opts=-BG          # On Centos/Rocky
   [[ $OS == Darwin ]] && df_opts=-g           # On MacOS
   if [[ -z $df_opts ]]; then
-    echo " FS QUOTAS: ERROR (internal): Don't know OS for df command.  Bailing"
+    echo "FS QUOTAS: ERROR (internal): Don't know OS for df command.  Bailing"
     exit 1
   fi
   #TODO  Use new os-release check
@@ -113,14 +113,14 @@
     I_total=$( bc <<< "$I_total /1000000")
     
    #  [[ $((100-space_used_no)) -lt 11 ]] || [[ $((100-inode_used_no)) -lt 11 ]] &&
-   #  echo " WARNING: space or inode availability low on $file_sys" 
+   #  echo "WARNING: space or inode availability low on $file_sys" 
    #
-   #  printf " %-8s [SPACE: %4s%% available of %4sGB]  [INODES: %4s%% free (%7s)]\n" \
+   #  printf "%-8s [SPACE: %4s%% available of %4sGB]  [INODES: %4s%% free (%7s)]\n" \
    #       $file_sys $((100-space_used_no)) ${df_flds[1]} \
    #                 $((100-inode_used_no)) ${df_flds[6]}
 
     [[ $O == V ]] || [[ $O == N ]] &&
-      printf " %-${NAME_sp}s %6s     %6s     %6s     %6s    %6s    %6s\n" \
+      printf "%-${NAME_sp}s %6s     %6s     %6s     %6s    %6s    %6s\n" \
               $fs \
               ${S_used} ${S_total} ${PS_used} \
               ${I_used} ${I_total} ${PI_used} 
@@ -160,7 +160,7 @@
     I_total=$( bc <<< "$I_total /1000000")
   
     [[ $O == V ]] || [[ $O == N ]] &&
-      printf " %-${NAME_sp}s %6s     %6s     %6s     %6s    %6s    %6s\n" \
+      printf "%-${NAME_sp}s %6s     %6s     %6s     %6s    %6s    %6s\n" \
               $fs \
               ${S_used} ${S_total} ${PS_used} \
               ${I_used} ${I_total} ${PI_used} 
@@ -220,7 +220,7 @@
       [[ $PI_remain -lt 3 ]] &&                            HPCI_fail+=($PI_remain) HPCI_fail_fs+=($fs)
 
       [[ $O == N ]] || [[ $O == V ]] &&
-      printf " %-${NAME_sp}s %6s     %6s     %6s     %6s    %6s    %6s\n" \
+      printf "%-${NAME_sp}s %6s     %6s     %6s     %6s    %6s    %6s\n" \
               $fs \
               ${S_used} ${S_total} ${PS_used} \
               ${I_used} ${I_total} ${PI_used}
@@ -239,28 +239,28 @@
   if [[ ${#LS_warn[@]} -ne 0 ]]; then
     STATUS=3
     for i in ${!LS_warn[@]}; do
-      echo " WARNING:  ${LS_warn_fs[$i]} has only ${LS_warn[$i]}% storage available."  
+      echo "WARNING:  ${LS_warn_fs[$i]} has only ${LS_warn[$i]}% storage available."  
     done
   fi
 
   if [[ ${#LI_warn[@]} -ne 0 ]]; then
     STATUS=3
     for i in ${!LI_warn[@]}; do
-      echo " WARNING :  ${LI_warn_fs[$i]} has only ${LI_warn[$i]}% remaining inodes."  
+      echo "WARNING :  ${LI_warn_fs[$i]} has only ${LI_warn[$i]}% remaining inodes."  
     done
   fi
 
   if [[ ${#HPCS_warn[@]} -ne 0 ]]; then
     STATUS=3
     for i in ${!HPCS_warn[@]}; do
-      echo " WARNING :  ${HPCS_warn_fs[$i]} has only ${HPCS_warn[$i]}% storage available."  
+      echo "WARNING :  ${HPCS_warn_fs[$i]} has only ${HPCS_warn[$i]}% storage available."  
     done
   fi
 
   if [[ ${#HPCI_warn[@]} -ne 0 ]]; then
     STATUS=3
     for i in ${!HPCI_warn[@]}; do
-      echo " WARNING :  ${HPCI_warn_fs[$i]} has only ${HPCI_warn[$i]}% remaining inodes."  
+      echo "WARNING :  ${HPCI_warn_fs[$i]} has only ${HPCI_warn[$i]}% remaining inodes."  
     done
   fi
 
@@ -268,28 +268,28 @@
   if [[ ${#LS_fail[@]} -ne 0 ]]; then
     STATUS=1
     for i in ${!LS_fail[@]}; do
-      echo " WARNING :  ${LS_fail_fs[$i]} has only ${LS_fail[$i]}% storage available."  
+      echo "WARNING :  ${LS_fail_fs[$i]} has only ${LS_fail[$i]}% storage available."  
     done
   fi  
 
   if [[ ${#LI_fail[@]} -ne 0 ]]; then
     STATUS=1
     for i in ${!LI_fail[@]}; do
-      echo " CRITICAL:  ${LI_fail_fs[$i]} has only ${LI_fail[$i]}% remaining inodes."  
+      echo "CRITICAL:  ${LI_fail_fs[$i]} has only ${LI_fail[$i]}% remaining inodes."  
     done
   fi  
 
   if [[ ${#HPCS_fail[@]} -ne 0 ]]; then
     STATUS=1
     for i in ${!HPCS_fail[@]}; do
-      echo " CRITICAL:  ${HPCS_fail_fs[$i]} has only ${HPCS_fail[$i]}% storage available."  
+      echo "CRITICAL:  ${HPCS_fail_fs[$i]} has only ${HPCS_fail[$i]}% storage available."  
     done
   fi  
 
   if [[ ${#HPCI_fail[@]} -ne 0 ]]; then
     STATUS=1
     for i in ${!HPCI_fail[@]}; do
-      echo " CRITICAL:  ${HPCI_fail_fs[$i]} has only ${HPCI_fail[$i]}% remaining inodes."  
+      echo "CRITICAL:  ${HPCI_fail_fs[$i]} has only ${HPCI_fail[$i]}% remaining inodes."  
     done
   fi  
 

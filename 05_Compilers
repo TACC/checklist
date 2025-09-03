@@ -19,8 +19,8 @@ HPC_OSs=(rocky centos fedora ubuntu debian)
     eval $output
     OS=$ID
     if [[ ! ${HPC_OSs[@]} =~ $OS ]]; then
-       echo " internal ERROR: could not get OS from /etc/os-release"
-       echo "   search list ( ${HPC_OSs[@]} )"
+       echo "internal ERROR: could not get OS from /etc/os-release"
+       echo "  search list ( ${HPC_OSs[@]} )"
        exit 1
     fi
   else
@@ -58,7 +58,7 @@ sets[oneAPI]="$oneAPI_set"
 
 
 #Check for all known compilers
-echo " COMPILERS: Searching Compiler Families (${compiler_families[@]})"
+echo "COMPILERS: Searching Compiler Families (${compiler_families[@]})"
 
 for family in ${compiler_families[@]}; do
 
@@ -83,16 +83,16 @@ for family in ${compiler_families[@]}; do
     flat_set="${set[@]}"
   if [[ ${#found[@]} == 0 ]]; then
      if [[ $O == V ]]; then
-       printf " %-6s family NOT AVAILABLE $module_clause.\n" $family
-       [[ $family == gcc ]] && printf "       family is required!\n"  && STATUS=1
+       printf "%-6s family NOT AVAILABLE $module_clause.\n" $family
+       [[ $family == gcc ]] && printf "      family is required!\n"  && STATUS=1
      fi
      [[ $family == gcc ]] && found_gcc_family=no
   fi
 
   if [[ ${#found[@]} == 1 ]] || [[ ${#found[@]} == 2 ]]; then
      if [[ $O == N ]] || [[ $O == V ]]; then
-       printf " %-6s family SUBSET AVAILABLE $module_clause (%s).\n"  $family  "$flat_found"
-       [[ $family == gcc ]] && printf "        Complete family is required!\n" "$flat_set"  && STATUS=1
+       printf "%-6s family SUBSET AVAILABLE $module_clause (%s).\n"  $family  "$flat_found"
+       [[ $family == gcc ]] && printf "       Complete family is required!\n" "$flat_set"  && STATUS=1
      fi
      [[ $family == gcc ]] && found_gcc_subset=yes && gcc_subset=($flat_found)
      found_subsets+=("${family}: $flat_found")
@@ -100,7 +100,7 @@ for family in ${compiler_families[@]}; do
 
   if [[ ${#found[@]} == 3 ]] || [[ ${#found[@]} == 1 ]]; then
      if [[ $O == N ]] || [[ $O == V ]]; then
-       printf ' %-6s family $module_clause (%s).\n' $family  "$flat_found"
+       printf '%-6s family $module_clause (%s).\n' $family  "$flat_found"
      fi
      found_all_3+=("${family}: $flat_found") 
   fi
@@ -112,23 +112,23 @@ for family in ${compiler_families[@]}; do
   if [[ ${compiler_families[$last_id]} == $family ]]; then
     if [[ $O == T ]]; then
       if [[ ${#found_subsets[@]} == 0 ]] && [[ ${#found_all_3[@]} == 0 ]];  then
-        echo " COMPILERS NONE FOUND (searched ${compiler_families[@]})"
+        echo "COMPILERS NONE FOUND (searched ${compiler_families[@]})"
         exit 1
       fi
       if [[ $found_gcc_family == no ]]; then
-        echo " COMPILERS GCC compilers not present."
+        echo "COMPILERS GCC compilers not present."
         exit 1
       fi
       if [[ $found_gcc_subset == yes ]]; then
-        echo " COMPILERS Only subset of GCC compilers found ($gcc_subset)."
+        echo "COMPILERS Only subset of GCC compilers found ($gcc_subset)."
         exit 1
       fi
       if [[ ${#found_all_3[@]} == 0 ]]; then
-        echo " COMPILERS No complete complier set found. (Incomplete sets: ${found_subsets[@]})"
+        echo "COMPILERS No complete complier set found. (Incomplete sets: ${found_subsets[@]})"
         exit 1
       fi
       FSETS="${found_subsets[@]}" #flatten
-      echo " COMPILERS ${found_all_3[@]} $FSETS" #( complete and subsets )
+      echo "COMPILERS ${found_all_3[@]} $FSETS" #( complete and subsets )
     fi 
   fi
 

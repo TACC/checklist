@@ -21,8 +21,8 @@ HPC_OSs=(rocky centos fedora ubuntu debian)
     eval $output
     OS=$ID
     if [[ ! ${HPC_OSs[@]} =~ $OS ]]; then
-       echo " internal ERROR: could not get OS from /etc/os-release"
-       echo "   search list ( ${HPC_OSs[@]} )"
+       echo "internal ERROR: could not get OS from /etc/os-release"
+       echo "  search list ( ${HPC_OSs[@]} )"
        exit 1
     fi
   else
@@ -56,9 +56,9 @@ fi
 if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
 
   [[ $O == V ]] &&
-    echo " FILE SYSTEMS:  Environment Variables and User Access"
+    echo "FILE SYSTEMS:  Environment Variables and User Access"
   [[ $O == N ]]  &&
-    echo " FILE SYSTEMS:  Definition & Access to (${USER_STORAGE_DIRS[@]})"
+    echo "FILE SYSTEMS:  Definition & Access to (${USER_STORAGE_DIRS[@]})"
 
 # VARIABLE DEFINITIONS
 
@@ -67,7 +67,7 @@ if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
       user_dir=${USER_STORAGE_DIRS[$i]}
       if [[ ! -z ${!user_dir} ]]; then
          [[ $O == V ]] &&
-         printf " %-9s Variable  is defined.\n" $user_dir
+         printf "%-9s Variable  is defined.\n" $user_dir
          found_pathnames+=(${!user_dir})
          found_storage_dirs+=($user_dir)
          found_storage_perms+=(${USER_STORAGE_PERMS[$i]})
@@ -75,7 +75,7 @@ if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
          defined+=($user_dir)
       else
          [[ $O == V ]] &&
-         printf " %-9s Variable NOT defined.\n" $user_dir
+         printf "%-9s Variable NOT defined.\n" $user_dir
         #[[ $STATUS != 1 ]] && STATUS=3  #  retain critical status
         #[[ ${CRITICAL_STORAGE_DIRS[@]} =~ $user_dir ]] && STATUS=1
          STATUS=1
@@ -85,8 +85,8 @@ if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
   done
 
   if [[ ${#found_storage_dirs[@]} == 0 ]]; then
-    echo " None of the following User Storage Variables are defined:"
-    echo "    (${USER_STORAGE_DIRS[@]})."
+    echo "None of the following User Storage Variables are defined:"
+    echo "   (${USER_STORAGE_DIRS[@]})."
     STATUS=1  #redundant, JIC some directories become only warnings in future
   fi
 
@@ -104,7 +104,7 @@ if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
 
        if [[ $stat_perm =~ ^${found_storage_perms[$i]} ]]; then
          [[ $O == V ]] &&
-          printf " %-9s directory USER permissions are valid (%s)..\n" \
+          printf "%-9s directory USER permissions are valid (%s)..\n" \
                  $user_dir ${found_storage_perms[$i]}
           valid+=($user_dir)
        else
@@ -128,24 +128,24 @@ if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
 
   if [[ ${#invalid[@]} -eq 0 ]] &&  [[ ${#undefined[@]} -eq 0 ]]; then
       [[ $O == T ]] && 
-        echo " FILE SYSTEMS: Defined and Accessible (${defined[@]})"
+        echo "FILE SYSTEMS: Defined and Accessible (${defined[@]})"
   fi
   [[ $O == N ]] && 
-    echo " DEFINED VARIABLES: (${defined[@]})" &&
-    echo " USER PERMISSIONS OK rwx: (${valid[@]})"
+    echo "DEFINED VARIABLES: (${defined[@]})" &&
+    echo "USER PERMISSIONS OK rwx: (${valid[@]})"
 
   if [[ ${#invalid[@]} -ne 0 ]] ||  [[ ${#undefined[@]} -ne 0 ]]; then
     [[ $O == T ]] &&
-      echo " FILE SYSTEMS: Defined and Accessible (${defined[@]})"
+      echo "FILE SYSTEMS: Defined and Accessible (${defined[@]})"
 
     if [[ ${#undefined[@]} -gt 0 ]]; then
-      echo " UNDEFINED VARS: ${undefined[@]}"
-      echo "   Make sure your startup scripts have not unset this (these) variable(s)."
+      echo "UNDEFINED VARS: ${undefined[@]}"
+      echo "  Make sure your startup scripts have not unset this (these) variable(s)."
     fi
     if [[ ${#invalid[@]}   -gt 0 ]]; then
       for i in ${!invalid[@]}; do 
-        echo " INCORRECT USER PERMISSIONS for ${invalid[$i]} found:expected ${found_expected[$i]}"
-        echo "   Correct with \"${fix_perms[$i]}\""
+        echo "INCORRECT USER PERMISSIONS for ${invalid[$i]} found:expected ${found_expected[$i]}"
+        echo "  Correct with \"${fix_perms[$i]}\""
       done
     fi
   fi

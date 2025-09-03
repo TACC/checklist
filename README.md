@@ -76,16 +76,16 @@ in C, exit in SHELL) value for the bash `checklist` command to capture
 
          #!/bin/bash
 
-         echo "APPS checking for my_app in \$PATH"  # line 1 general description
+         echo "APPS: checking for my_app in \$PATH" # line 1 general description
 
          $( type my_app >/dev/null 2>&1 )           # check 4 my_app, no output
          if [[ $? == 0 ]]; then
-           echo " APPS: my_app is present."         # message & status (0=PASS)
+           echo "my_app is present."                # message & status (0=PASS)
            exit 0    
          else
-           echo " APPS: my_app is NOT present (check uses \"type\" cmd)."
-           echo " Check \$PATH variable."
-           echo " Acquire from https/github.com/$USER/my_app."
+           echo "my_app is NOT present (check uses \"type\" cmd)."
+           echo "Check \$PATH variable."
+           echo "Acquire from https/github.com/$USER/my_app."
            exit 1                                            # status (1=FAIL)
          fi 
 ```
@@ -107,21 +107,21 @@ in C, exit in SHELL) value for the bash `checklist` command to capture
         [[ $1 == -t ]] && O=T 
         [[ $1 == -v ]] && O=V 
 
-        echo "APPS checking for my_app in \$PATH"  # line 1 general description
+        echo "APPS: checking for my_app in \$PATH"  # line 1 general description
 
         $( type my_app >/dev/null 2>&1 )            # check 4 my_app, no output
         if [[ $? == 0 ]]; then
-          echo " APPS: my_app is present."          # message
+          echo "my_app is present."                 # message
           exit 0                                    # return status (0 = PASS)
 
         else                                        # FAIL CASE
           [[ $O == T ]]  &&                                        # terse
-            echo " APPS: my_app was NOT FOUND."
+            echo "my_app was NOT FOUND."
           [[ $O == N ]] || [[ $O == V ]] &&                        # norm|verb
-            echo " APPS: my_app was NOT FOUND by \"type\" cmd." &&  
-            echo " Check \$PATH variable or default module setup."
+            echo "my_app was NOT FOUND by \"type\" cmd." &&  
+            echo "Check \$PATH variable or default module setup."
           [[ $O == V ]] &&                                         # verb
-            echo " Acquire my_app from https//:github.com/$USER/my_app."
+            echo "Acquire my_app from https//:github.com/$USER/my_app."
           exit 1                                      # return status (1=FAIL)
         fi  
 ```
