@@ -31,13 +31,6 @@
   HPC_OSs=(rocky centos fedora ubuntu debian)
 
    SSH_DIR=$HOME/.ssh
-   SSH_DIR=$HOME/.ssh_test
-   SSH_DIR=$HOME/.sshx
-   SSH_DIR=$HOME/.ssh_empty
-   SSH_DIR=$HOME/.ssh_mixed
-   SSH_DIR=$HOME/.ssh_multi
-   SSH_DIR=$HOME/.ssh_noauth
-   SSH_DIR=$HOME/.ssh
    pub_key_files=( id_ed25519.pub id_rsa.pub id_ecdsa.pub )
   priv_key_files=( id_ed25519     id_rsa     id_ecdsa )
 

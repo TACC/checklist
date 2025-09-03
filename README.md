@@ -2,7 +2,8 @@ Checklist
 ==============
 
 Checklist evaluates the access/availability of critical components in User Space for using HPC Systems.
-Checklist 4.0 is a complete rewrite and redesign of the Sanitytool sanitycheck developed at TACC by McLay and Si Liu. Version 4.1 unifies the TACC interface in the check scripts and allows -t|-v (as well at t|v) for terse and verbose options..
+Checklist 4.0 is a complete rewrite and redesign of the Sanitytool sanitycheck developed at TACC by McLay and Si Liu. 
+Version 4.1 unifies the script interface for TACC-only components and allows -t|-v (as well at t|v) for terse and verbose options.
 
 #### General:
 
@@ -106,6 +107,7 @@ in C, exit in SHELL) value for the bash `checklist` command to capture
         [[ $# !=  1 ]] && O=N    #Command line options t=Terse,v=Verbose, default Normal
         [[ $1 == -t ]] && O=T 
         [[ $1 == -v ]] && O=V 
+        [[ ! "$O" =~ [NTV] ]] && echo "USAGE: $0 [-t|-v] # terse|verbose output"
 
         echo "APPS: checking for my_app in \$PATH"  # line 1 general description
 
