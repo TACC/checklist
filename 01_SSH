@@ -200,7 +200,7 @@ check_perm(){
   
   if [[ $stat_perm == ${perms[$i]} ]]; then
     [[ $O == V ]] &&
-    printf " %-40s %s\n"  "Permissions correct for $name:" "${perms[$i]}"
+    printf "%-40s %s\n"  "Permissions correct for $name:" "${perms[$i]}"
   else
     return_status=1
     echo "SSH: FAILED Permissions on $short_pathname are incorrect."

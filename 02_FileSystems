@@ -132,7 +132,7 @@ if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
   fi
   [[ $O == N ]] && 
     echo "DEFINED VARIABLES: (${defined[@]})" &&
-    echo "USER PERMISSIONS OK rwx: (${valid[@]})"
+    echo "USER PERMISSIONS OK drwx: (${valid[@]})"
 
   if [[ ${#invalid[@]} -ne 0 ]] ||  [[ ${#undefined[@]} -ne 0 ]]; then
     [[ $O == T ]] &&

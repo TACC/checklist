@@ -249,9 +249,9 @@ fi
 
      if [[ $O == V ]]; then  #Normal report size
             #         RN    ST PART  N   S  WUG  UAG
-             printf " %16.16s%9s%12s%6s%16s%25s  %s\n" \
-                      $RN    ${r[$i,11]} $PART      ${r[$i,5]} "$start_time" "$WAITorUSED_Duration" "$UAG"
-                 #    $RN    ${r[$i,11]} $PART      ${r[$i,3]} "$start_time" "$WAITorUSED_Duration" "$UAG"
+             printf "%16.16s%9s%12s%6s%16s%25s  %s\n" \
+                     $RN    ${r[$i,11]} $PART      ${r[$i,5]} "$start_time" "$WAITorUSED_Duration" "$UAG"
+                 #   $RN    ${r[$i,11]} $PART      ${r[$i,3]} "$start_time" "$WAITorUSED_Duration" "$UAG"
                  #${r[$i,0]} ${r[$i,11]} $PART      ${r[$i,3]} "$start_time" "$WAITorUSED_Duration" "$UAG"
                  #      |         |             |     |           |           /     /     |         | |   \
                  #  Res Name    State   Partition Nodes [Start M-D h:m] [Wait:|Used:]  Duration [Usr:|Acct:|Grp]

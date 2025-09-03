@@ -9,9 +9,10 @@
 #  5.) At TACC failur4 is no default compiler system.
 #                                 2025-08-01 Kent Milfeld
 
-[[ $# != 1 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
-[[ $1 == t ]] && O=T 
-[[ $1 == v ]] && O=V 
+  [[ $# == 0 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
+  [[ $1 =~ t ]] && O=T 
+  [[ $1 =~ v ]] && O=V 
+  [[ ! "$O" =~ [NTV] ]] && echo "USAGE: $0 [-t|-v] # terse|verbose output"
 
 HPC_OSs=(rocky centos fedora ubuntu debian)
   if [[ -f /etc/os-release ]]; then
@@ -58,6 +59,7 @@ sets[oneAPI]="$oneAPI_set"
 
 
 #Check for all known compilers
+[[ $O == N ]] || [[ $O == V ]] &&
 echo "COMPILERS: Searching Compiler Families (${compiler_families[@]})"
 
 for family in ${compiler_families[@]}; do
@@ -112,23 +114,23 @@ for family in ${compiler_families[@]}; do
   if [[ ${compiler_families[$last_id]} == $family ]]; then
     if [[ $O == T ]]; then
       if [[ ${#found_subsets[@]} == 0 ]] && [[ ${#found_all_3[@]} == 0 ]];  then
-        echo "COMPILERS NONE FOUND (searched ${compiler_families[@]})"
+        echo "COMPILERS: NONE FOUND (searched ${compiler_families[@]})"
         exit 1
       fi
       if [[ $found_gcc_family == no ]]; then
-        echo "COMPILERS GCC compilers not present."
+        echo "COMPILERS: GCC compilers not present."
         exit 1
       fi
       if [[ $found_gcc_subset == yes ]]; then
-        echo "COMPILERS Only subset of GCC compilers found ($gcc_subset)."
+        echo "COMPILERS: Only subset of GCC compilers found ($gcc_subset)."
         exit 1
       fi
       if [[ ${#found_all_3[@]} == 0 ]]; then
-        echo "COMPILERS No complete complier set found. (Incomplete sets: ${found_subsets[@]})"
+        echo "COMPILERS: No complete complier set found. (Incomplete sets: ${found_subsets[@]})"
         exit 1
       fi
       FSETS="${found_subsets[@]}" #flatten
-      echo "COMPILERS ${found_all_3[@]} $FSETS" #( complete and subsets )
+      echo "COMPILERS: ${found_all_3[@]} $FSETS" #( complete and subsets )
     fi 
   fi
 

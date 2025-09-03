@@ -86,7 +86,7 @@ if [[ ${batch_sched[@]} == SLURM ]]; then
   fi
   
   if [[ $queue_count -eq $up_count ]]; then 
-    [[ $O == V ]] && echo "All Queues are UP." 
+    [[ $O == V ]] && echo "All  Queues   UP." 
   fi
 
     not_up_status=$(sinfo --noheader -o "(%P: %a)" | grep -v '\bup\b')
