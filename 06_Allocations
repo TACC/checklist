@@ -1,8 +1,14 @@
 #!/bin/bash
+# This check is very HPC-site specific.
+# TACC uses accounting files in /usr/local/etc
+# 1.) Get project ids for user
+# 2.) Get project names for project ids
+# 3.) Allocations, Used and Balance SUs for projects
 
 
-#TODO  warning isi project ending soon or near 5% limit
+##TODO  warning if project ending soon or near 5% limit
 ##TODO fail is 2 percent left
+##TODO Present details about refunds.
 
   [[ $# == 0 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
   [[ $1 =~ t ]] && O=T
@@ -56,6 +62,7 @@ if [[ $AT_TACC == yes ]]; then
 
   projects=( $(grep -E "^${user}\\b" $projuser_map) ) #projuser_map
   status=$?
+
   projects=("${projects[@]:1}")  #remove 1st element, user name
   if [[ $status == 0 ]]; then
     if [[ $O == V ]] ; then
@@ -65,6 +72,8 @@ if [[ $AT_TACC == yes ]]; then
     echo "PROJECTS: NO PROJECTS FOUND."
     exit 1
   fi
+##echo HERE0 projects=${projects[@]}
+##exit
 
 # Project Details
   valid_count=0 expired_count=0
@@ -80,6 +89,8 @@ if [[ $AT_TACC == yes ]]; then
       allocate=${usage[4]}
           used=${usage[5]}
        balance=${usage[6]}
+
+       used_int=${used%.*}
 
     if [[ ${#usage[@]} -ne 7 ]]; then
         echo -e "WARNING: invalid account line for $proj_name:\n" \
@@ -101,18 +112,31 @@ if [[ $AT_TACC == yes ]]; then
         EXP_proj_date+=("$proj_name $end_date ")
       else
         if [[ $O == V ]] ; then
+[[ ${used_int} -gt -1 ]] &&
           printf  "ACTIVE : %8s (SUs Alloc:Used:Bal:Exp) %8s %8.0f %8.0f %s \n" \
                   "$proj_name" "${allocate}" "${used}" "${balance}" "$end_date"
+[[ ${used_int} -lt  0 ]] &&
+          printf  "ACTIVE : %8s (SUs Alloc:Used:Bal:Exp) %8s %8s   %8.0f %s \n" \
+                  "$proj_name" "${allocate}" "--" "${balance}" "$end_date"
         fi
+
           PC_remain=$(bc   <<< "100*$balance/$allocate")
           balance=${balance%.*}
           act_proj+=( $proj_name:Bal=$balance)
           ACT_proj+=( $proj_name )
+if [[ $PC_remain -gt 100 ]] || [[ $used_int -lt 0 ]]; then
+          refund_fix=yes
+          PC_remain="${balance}"
+          ACT_proj_PCremain+=( "$proj_name ${PC_remain}(SUs --%) " )
+          ACT_proj_bal_PCremain+=( "$proj_name $balance --%" )
+else
           ACT_proj_PCremain+=( "$proj_name ${PC_remain}% " )
           ACT_proj_bal_PCremain+=( "$proj_name $balance ${PC_remain}%" )
       fi
+fi
 #exp_proj=(CCSC1234 abc1234)   #For testing
 #EXP_proj_date=("CCSC1234 10/10/24"  "abc1234 9/9/23")
+
       if [[ $proj_id == ${projects[-1]} ]] && [[ $O == T ]] ; then   #las proj_id
          [[ ${#exp_proj[@]} -gt 0 ]] && EXP="Expired: (${exp_proj[@]})"
          [[ ${#act_proj[@]} -gt 0 ]] && ACT="(${ACT_proj_PCremain[@]} %remain)"
@@ -140,6 +164,16 @@ if [[ $AT_TACC == yes ]]; then
     fi
     [[ $expired_count -gt 0 ]] && exit 3                   #WARNING
   fi
+
+if [[ $refund_fix == yes ]];then 
+  [[ $O == T ]] &&
+  echo "Projects with \"-- %\" cannot be determined due to refunds, (balance SUs reported)."
+  [[ $O == N ]] &&
+  echo "Projects with \"-- %\" cannot be determined due to refunds."
+  [[ $O == V ]] &&
+  echo "Projects with \"--\" Used values cannot be determined due to refunds."
+  echo "Refer to the TACC portal for details."
+fi
 
   exit 0
 
