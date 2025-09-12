@@ -17,8 +17,9 @@
 # 4.) Check permission on ~/.ssh/authorized_keys
 # 5.) Make sure *_id.pub is in authorized_keys
 
-#TODO Exist later if 0 keys found (check directory permissions
-#TODO Exist later if OK with multiple keys
+#TODO Exit later if 0 keys found (check directory permissions
+#TODO Exit later if OK with multiple keys
+#TODO check to make sure private key is in authorized_keys
 #                                 2025-08-01 Kent Milfeld
 
   [[ $# == 0 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
@@ -204,7 +205,7 @@ check_perm(){
 
 }
 
-# skip used to avoid permission check. Code no exits if file not found
+# skip use to avoid permission check. Code now exits if file not found
 for i in ${!filenames[@]}; do
  #if [[ ! "${skip[@]}" =~ $i ]]; then
     path_name=$SSH_DIR/${filenames[$i]}
@@ -220,8 +221,23 @@ if [[ $O == N ]] && [[ $STATUS == 0 ]]; then
    echo "Permissions OK for:  (${filenames[@]})" 
 fi
 
+# Check to make sure public key is in authorized_keys
+
+pub_key=${filenames[1]}
+string=$(cat $SSH_DIR/$pub_key)
+if [[ $? != 0 ]];then
+  echo "Public key ($pub_key) is not in the authorized_keys file."
+  echo "   FIX: cat $SSH_DIR/id_ed25519.pub >> $SSH_DIR/authorized_keys"
+  STATUS=1
+fi
+
+if [[ $O == N ]] || [[ $O == V ]] && [[ $STATUS == 0 ]]; then
+  echo "Authorization OK:    (${filenames[1]} key is in authorized_keys file."
+fi
+#
+
 if [[ $O == T ]] && [[ $STATUS == 0 ]]; then
-   echo "SSH: found keys with correct permissions"
+   echo "SSH: OK Permissions: keys & .ssh dir; pub key in authorized_keys file."
 fi
 
 exit $STATUS
