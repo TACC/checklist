@@ -19,8 +19,9 @@
 
 #TODO Exit later if 0 keys found (check directory permissions
 #TODO Exit later if OK with multiple keys
-#TODO check to make sure private key is in authorized_keys
 #                                 2025-08-01 Kent Milfeld
+#Make sure private key is in authorized_keys
+#                                 2025-09-15 Kent Milfeld
 
   [[ $# == 0 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
   [[ $1 =~ t ]] && O=T
@@ -54,23 +55,6 @@
   else
     [[ `uname -a` =~ Darwin ]] && OS=darwin
   fi
-
-
-# [PASS] 01 SSH: found keys with correct permissions
-
-# [PASS] 01 SSH:  keys and permissions
-#           SSH Found files :    (.ssh id_ed25519.pub id_ed25519 authorized_keys)
-#           Permissions OK for:  (.ssh id_ed25519.pub id_ed25519 authorized_keys)
-
-# [PASS] 01 SSH setup
-#            Found directory pub_key.
-#            Found public key id_ed25519.pub
-#            Found private key id_ed25519
-#            Permissions correct for .ssh:            drwx------
-#            Permissions correct for id_ed25519.pub:  -rw-r--r--
-#            Permissions correct for id_ed25519:      -rw-------
-#            Permissions correct for authorized_keys: -rw-------
-
 
 # SSH Directory
 if [[ ! -d $SSH_DIR ]]; then  # Does $HOME/.ssh exist
@@ -166,7 +150,7 @@ fi
 if [[ $O == N ]]; then
   flat_found="${found[@]}" flat_unfound="${unfound[@]}"
   echo   "SSH: found keys with correct permissions"
-  printf "Found files :        (%s)\n" "$flat_found"
+  printf "Found dir/files:    (%s)\n" "$flat_found"
  #[[ ${#unfound[@]} -gt 0 ]] &&
  #printf "SSH NOT Found files: (%s)\n" "$flat_unfound"
 fi
@@ -174,13 +158,11 @@ fi
 #===========================================================
 
 check_perm(){
-
   pathname=${CL_PATHNAME-$1} 
       perm=${CL_PERM-$2} 
    setperm=${CL_SETPERM-$1} 
-
-  local O=$4
-  return_status=0
+   local O=$4
+   return_status=0
 
   opts='-c %A'
   [[ $OS == darwin ]]          && opts='-f %Sp'
@@ -190,7 +172,6 @@ check_perm(){
   
   name=`basename ${pathname}`
   short_pathname=$(echo ${pathname} | sed 's@'$HOME'@$HOME@')
-  
   
   if [[ $stat_perm == ${perms[$i]} ]]; then
     [[ $O == V ]] &&
@@ -202,7 +183,6 @@ check_perm(){
     echo "     Should be: ${perms[$i]}"
     echo "     Execute:   chmod ${set_perms[$i]} $short_pathname"
   fi
-
 }
 
 # skip use to avoid permission check. Code now exits if file not found
@@ -218,13 +198,14 @@ for i in ${!filenames[@]}; do
 done
 
 if [[ $O == N ]] && [[ $STATUS == 0 ]]; then
-   echo "Permissions OK for:  (${filenames[@]})" 
+   echo "Permissions OK for: (${filenames[@]})" 
 fi
 
 # Check to make sure public key is in authorized_keys
 
 pub_key=${filenames[1]}
-string=$(cat $SSH_DIR/$pub_key)
+string=$(cat   $SSH_DIR/$pub_key)
+grep "$string" $SSH_DIR/authorized_keys >/dev/null 2>&1
 if [[ $? != 0 ]];then
   echo "Public key ($pub_key) is not in the authorized_keys file."
   echo "   FIX: cat $SSH_DIR/id_ed25519.pub >> $SSH_DIR/authorized_keys"
@@ -232,7 +213,7 @@ if [[ $? != 0 ]];then
 fi
 
 if [[ $O == N ]] || [[ $O == V ]] && [[ $STATUS == 0 ]]; then
-  echo "Authorization OK:    (${filenames[1]} key is in authorized_keys file."
+  echo "Authorization OK:   (${filenames[1]} key is in authorized_keys file.)"
 fi
 #
 
