@@ -179,7 +179,7 @@ fi
      for i in ${!R_lines[@]}; do
        for j in ${!R_keys[@]};do 
          [[ $j -eq 0 ]] && echo " -> Reservation ${r[$i,0]} ----------"
-         printf "   %2d %15s %s\n" $j ${R_keys[$j]} ${r[$i,$j]}; 
+         printf -- "   %2d %15s %s\n" $j ${R_keys[$j]} ${r[$i,$j]}; 
        done
      done
      [[ ${#starts[@]} -ne 0 ]] && echo "   Reservations start-time order: ${starts[@]}"
@@ -204,7 +204,7 @@ fi
       if [[ $O == N ]]; then
         echo "RESERVATIONS: Searched $USER and project (${proj_names[@]}) reservations."
         echo "RESERVATION_NAME  STATE PARTITION [START M-D h:m] [Wait:|Used:]  DURATION [Usr:|Acct:|G:]"
-## TODO  Don't print header, but but NONE on previous line if not reservations found
+## TODO  Don't print header, but put NONE on previous line if not reservations found
       fi
    fi
    [[ $nres -eq 0 ]] &&
@@ -236,7 +236,6 @@ fi
      [[ $now_yy -ne $start_yy ]] && start_time=${start_yy}-$start_time
 ###
      RN=${r[$i,0]} n=${#RN}
-#echo "---------------------------------------$RN. n=$n."
      if [[ $n -gt $RN_lmax ]]; then
          nbase=$(( RN_lmax - 6))
       c1=${RN:0:$nbase}  # first  nbase chars  (base)
@@ -244,21 +243,20 @@ fi
          from=$((n-4)) to=$((n-1))
       c3=${RN:$from:$to} # last 4 char
       RN="$c1$c2$c3"
-##     echo "c1:$c1.  c2:$c2.  c3:$c3."
      fi
 
      if [[ $O == V ]]; then  #Normal report size
             #         RN    ST PART  N   S  WUG  UAG
-             printf "%16.16s%9s%12s%6s%16s%25s  %s\n" \
-                     $RN    ${r[$i,11]} $PART      ${r[$i,5]} "$start_time" "$WAITorUSED_Duration" "$UAG"
-                 #   $RN    ${r[$i,11]} $PART      ${r[$i,3]} "$start_time" "$WAITorUSED_Duration" "$UAG"
-                 #${r[$i,0]} ${r[$i,11]} $PART      ${r[$i,3]} "$start_time" "$WAITorUSED_Duration" "$UAG"
-                 #      |         |             |     |           |           /     /     |         | |   \
-                 #  Res Name    State   Partition Nodes [Start M-D h:m] [Wait:|Used:]  Duration [Usr:|Acct:|Grp]
-                 #replace_co INACTIVE  developmet    36    12-19 08:00   W:  4-12:38  369-21:27  U: milfeld
-                 #      DAOS   ACTIVE        null     4    12-19 08:00   W:  1-01:02    1-00:00  U: milfeld,cazes
-                 #234567890|23456789|12345678901|34567|90123456789012|4567890123456|8901234567|9012345678901234567890
-                 #     11      9         12        6        15        <           25         >
+             printf -- "%16.16s%9s%12s%6s%16s%25s  %s\n" \
+                        $RN    ${r[$i,11]} $PART      ${r[$i,5]} "$start_time" "$WAITorUSED_Duration" "$UAG"
+                 #      $RN    ${r[$i,11]} $PART      ${r[$i,3]} "$start_time" "$WAITorUSED_Duration" "$UAG"
+                 #  ${r[$i,0]} ${r[$i,11]} $PART      ${r[$i,3]} "$start_time" "$WAITorUSED_Duration" "$UAG"
+                 #        |         |             |     |           |           /     /     |         | |   \
+                 #    Res Name    State   Partition Nodes [Start M-D h:m] [Wait:|Used:]  Duration [Usr:|Acct:|Grp]
+                 #  replace_co INACTIVE  developmet    36    12-19 08:00   W:  4-12:38  369-21:27  U: milfeld
+                 #        DAOS   ACTIVE        null     4    12-19 08:00   W:  1-01:02    1-00:00  U: milfeld,cazes
+                 #  234567890|23456789|12345678901|34567|90123456789012|4567890123456|8901234567|9012345678901234567890
+                 #       11      9         12        6        15        <           25         >
        continue
      fi
 
@@ -268,22 +266,22 @@ fi
      done
      [[ ${#UAG_list[@]} -gt 0 ]] && UAG="A: ${UAG_list[@]}" && my_ress+=(${r[$i,0]})  #should not be multiple Accts; but JIC
      
+
      if [[ $O == N ]]; then  #Normal report size
      
         # Shorten STATE, PARTITION and User/Acct list for normal report
      
         STATE=${r[$i,11]/INACTIVE/INACTV}  # Shortened
-        [[ ${#PART}        -gt  8 ]] && PART="${PART:0:7}."
+        [[ ${#PART}        -gt  9 ]] && PART="${PART:0:7}."
         [[ ${#UAG_list[@]} -gt  0 ]] && UAG="A: ${UAG_list[@]}"  #should not be multiple Accts; but JIC
-        [[ ${#startime}    -gt 11 ]] && PART="${startime:-11}."
      
-        [[ $found_user != yes ]] && [[ found_project != yes ]] &&  UAG="NOT YOUR RES."
+        [[ $found_user != yes ]] && [[ $found_project != yes ]] &&  UAG="NOT YOUR RES."
      
       #  [[ $uses_grp_access != yes ]] && [[ $O == N ]] && ACCESS="[Usr: | Acct: ]"
       #  [[ $uses_grp_access == yes ]] && [[ $O == N ]] && ACCESS="[Usr:|Acct:|G:]"
       #  echo " RESERVATION_NAME  STATE PARTITION [START M-D h:m] [Wait:|Used:]  DURATION $ACCESS"
             #         RN    ST PART   S  WUG  UAG
-             printf "%16.16s%7s%10s%15s%25s  %s\n" \
+             printf -- "%16.16s%7s%10s%15s%25s  %s\n" \
                      $RN  $STATE  $PART "$start_time" "$WAITorUSED_Duration" "$UAG"
      fi
 
@@ -293,7 +291,7 @@ fi
      if [[ ${#my_ress[@]}  == 0 ]]; then
         echo "RESERVATIONS: None."
      else
-        echo "RESERVATIONS: ${my_ress[@]} (Run \"checkpoint -v\" for details.)"
+        echo "RESERVATIONS: ${my_ress[@]} (Run \"checklist -v\" for details.)"
      fi
    fi
 
