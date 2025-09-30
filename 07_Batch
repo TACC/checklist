@@ -3,6 +3,9 @@
 #TODO:
 # determine what the scheduler
 # show queues, and determine status  (si with status)
+# Set <sched_type>_SYS_PATH (e.g. SLURM_SYS_PATH=/usr/bin)
+#     for warning with a "Note" if schedule commands 
+#     (e.g. sbatch) are aliased or are functions.
 
   [[ $# == 0 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
   [[ $1 =~ t ]] && O=T 
@@ -10,6 +13,8 @@
   [[ ! "$O" =~ [NTV] ]] && echo "USAGE: $0 [-t|-v] # terse|verbose output"
 
 STATUS=0
+
+SLURM_SYS_PATH=/usr/bin
 
 type sbatch >& /dev/null
 [[ $? == 0 ]] && batch_sched+=(SLURM         ) && sched_cmds=(sbatch scancel squeue)
@@ -53,19 +58,36 @@ for sched_cmd in ${sched_cmds[@]}; do
   output=`type $sched_cmd`
   if [[ $? == 0 ]]; then 
     found_cmds+=($sched_cmd)
+    if [[ ! -z $SLURM_SYS_PATH ]]; then
+      login_output=$( /bin/bash -l type $sched_cmd )
+      if [[ ! $login_output =~ "$SLURM_SYS_PATH/$sched_cmd" ]]; then
+        #echo "WARNING: $sched_cmd is an alias/function in login shell."
+         STATUS=3
+         found_alias_function+=($sched_cmd)
+      fi  
+    fi  
   else
     not_found_cmds+=($sched_cmd)
   fi
 done
 
 if [[ ${#sched_cmds[@]} -eq ${#found_cmds[@]} ]]; then
-   
    [[ $O == V ]] &&
      echo "All BATCH scheduler command(s) found: ${found_cmds[@]}"
    [[ $O == N ]] &&
      echo "BATCH:  All ${batch_sched[0]} cmds found: ${found_cmds[@]}."
+   [[ $O == T ]] &&
+     T_output="BATCH: ${batch_sched[0]} cmds found: ${found_cmds[@]}."
+
+   if [[ $O == V ]] || [[ $O == N ]]; then
+     [[ ${#found_alias_function[@]} -gt 0 ]] &&
+       echo "Warning: Cmds are aliased/function'd in login shell: ${found_alias_function[@]}."
+   fi
 else
-   echo "Only found BATCH scheduler command(s): ${found_cmds[@]}"
+   [[ ${#found_alias_function[@]} -gt 0 ]] &&
+     echo "Warning: Cmds are aliased/function'd in login shell: ${found_alias_function[@]}."
+
+   echo "Error: Only found BATCH scheduler command(s): ${found_cmds[@]}"
    echo "Could not find the BATCH command(s): ${not_found_cmds[@]}"
    exit 1
 fi
@@ -100,11 +122,15 @@ if [[ ${batch_sched[@]} == SLURM ]]; then
     fi
 
     if [[ $queue_count -eq $up_count ]]; then
-      [[ $O == T  ]] &&
-        echo "QUEUES: ALL UP."
+      if [[ $O == T  ]]; then
+        echo "$T_output  ALL QUEUES UP."
+        [[ ${#found_alias_function[@]} -gt 0 ]] &&
+          echo "Warning: Cmds are aliased/function'd in login shell: ${found_alias_function[@]}."
+      fi
     else
       if [[ $O == T  ]]; then
         not_up_status=$(sinfo --noheader -o "(%P: %a)" | grep -v '\bup\b')
+        echo "$T_output"
         echo "QUEUES: DOWNED  $not_up_status"
       fi
       STATUS=3
