@@ -19,6 +19,8 @@ the prefix number in the module name (01_SSH, <##>_<whatever>)
          checklist 01_SSH  02_Storage  0#_<check_item>.
 ```
 
+#### Install:
+
 * New in 4.1. Use the install.sh script to install as
 a directory with checklist and its modules (mainly for
 development and personal use) or as a single executable
