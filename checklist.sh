@@ -17,6 +17,8 @@
 # 
 # END COMMENTS -- Do Not Remove, Alter or Duplicate
 #-----
+[[ $1 =~ --version ]] && echo " -> $(basename $0) VERSION = 4.1" && exit 0
+
 USAGE=" $0 [-t|-v]  #terse|verbose"   # will allow [t|v] -> anything with "t" or "v"
 
 #Command line options t=terse,v=verbose, default normal
