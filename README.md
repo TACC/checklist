@@ -19,12 +19,23 @@ the prefix number in the module name (01_SSH, <##>_<whatever>)
          checklist 01_SSH  02_Storage  0#_<check_item>.
 ```
 
+* New in 4.1. Use the install.sh script to install as
+a directory with checklist and its modules (mainly for
+development and personal use) or as a single executable
+with modules included as functions in checklist (for
+site install in /usr/bin).
+
+```
+         install.sh scripts  # dir. with modules & checklist
+         install.sh functions   # single checklist cmd.
+```
+
 #### Checklist Operation:
 
 * Load checklist module and execute `checklist`:
 
 ```
-         $ checklist    # Maybe  system-installed in /usr/bin
+         $ checklist  # Try 1st: Maybe system-installed in /usr/bin
          $            
          $ module load checklist
          $ checklist
