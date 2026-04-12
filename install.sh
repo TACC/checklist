@@ -29,7 +29,6 @@ USAGE2=" ->         Use functions normally, scripts if developing."
 
 [[ $1 != scripts ]] && [[ $1 != functions ]] &&  \
    echo " Error: did not understand $0 $1" && echo "$USAGE1" && exit 1
-exit
 
 #============
 
