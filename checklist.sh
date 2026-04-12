@@ -19,7 +19,7 @@
 #-----
 [[ $1 =~ --version ]] && echo " -> $(basename $0) VERSION = 4.1" && exit 0
 
-USAGE=" $0 [-t|-v]  #terse|verbose"   # will allow [t|v] -> anything with "t" or "v"
+USAGE=" $(basename $0) [-t|-v]  #terse|verbose"   # will allow [t|v] -> anything with "t" or "v"
 
 #Command line options t=terse,v=verbose, default normal
 [[ $1 =~ t ]] && set -- -t
