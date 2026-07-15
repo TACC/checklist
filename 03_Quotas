@@ -29,7 +29,7 @@
   LOCAL_fs=(/tmp)
 
 # HPC_SITE File Systems
-  for sys in ls6 frontera stampede3 vista; do
+  for sys in ls6 frontera stampede3 vista horizon; do
     [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
   done
 
@@ -42,6 +42,7 @@
     fi
 
     if [[ $TACC_SYS == vista     ]] || 
+       [[ $TACC_SYS == horizon   ]] ||
        [[ $TACC_SYS == ls6       ]] || 
        [[ $TACC_SYS == stampede3 ]]; then
          HPC_fs=(/home1 /work)

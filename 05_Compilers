@@ -34,7 +34,7 @@ STATUS=0
 [[ ${HPC_OSs[@]} =~ $OS   ]] && opts='-A'
 
 host_name=`hostname $opts`
-for sys in frontera vista stampede ls6; do
+for sys in frontera vista stampede ls6 horizon; do
   [[ $host_name =~ $sys ]] && AT_TACC=yes TACC_SYS=$sys
 done
 
