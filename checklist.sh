@@ -61,8 +61,11 @@ for check in ${clist[@]}; do
   fi
 
   NO=${check%%_*}       # Get prefix sequence number (e.g. prefix number of 01_SSH)
-# [[ $USE == scripts   ]] && output=`$CL_DIR/$check $1` && status=$?
-  [[ $USE == functions ]] && output=$($check $1)        && status=$? #function option
+
+  if [[ $USE == functions ]]; then
+    output=$($check $1)
+    status=$?
+  fi
 
   if [[ $USE == scripts   ]]; then
     output=`$CL_DIR/$check $1` 
