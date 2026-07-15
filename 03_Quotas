@@ -45,9 +45,12 @@
        [[ $TACC_SYS == horizon   ]] ||
        [[ $TACC_SYS == ls6       ]] || 
        [[ $TACC_SYS == stampede3 ]]; then
-         HPC_fs=(/home1 /work)
+         HPC_fs=(/home1)
          cmds[0]="    quota -w -f    /home1 | sed -n '3p'"
-         cmds[1]="lfs quota -u $USER /work  | sed -n '3p'"
+         if [[ -d /work ]]; then
+           HPC_fs=(/home1 /work)
+           cmds[1]="lfs quota -u $USER /work  | sed -n '3p'"
+         fi
     fi
   fi
 # end HPC_SITE File Systems
