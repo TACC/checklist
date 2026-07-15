@@ -115,8 +115,8 @@ if [[ ${batch_sched[@]} == SLURM ]]; then
          up_status=$(sinfo --noheader -o "(%P: %a)" | grep    '\bup\b')
   
     if [[ $O == N  ]]; then
-          up=( $(sinfo --noheader -o "%P %a" | grep    '\b\up\b' | sed 's/up//') )
-      not_up=( $(sinfo --noheader -o "%P %a" | grep -v '\b\up\b' | sed 's/up//') )
+          up=( $(sinfo --noheader -o "%P %a" | grep    '\bup\b' | sed 's/up//') )
+      not_up=( $(sinfo --noheader -o "%P %a" | grep -v '\bup\b' | sed 's/up//') )
       [[ ${#up[@]}     -gt 0 ]] && echo "Queues   UP: ${up[@]}"
       [[ ${#not_up[@]} -gt 0 ]] && echo "Queues DOWN: ${not_up[@]}"
     fi
