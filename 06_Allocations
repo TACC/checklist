@@ -72,8 +72,6 @@ if [[ $AT_TACC == yes ]]; then
     echo "PROJECTS: NO PROJECTS FOUND."
     exit 1
   fi
-##echo HERE0 projects=${projects[@]}
-##exit
 
 # Project Details
   valid_count=0 expired_count=0
@@ -120,7 +118,11 @@ if [[ $AT_TACC == yes ]]; then
                   "$proj_name" "${allocate}" "--" "${balance}" "$end_date"
         fi
 
-          PC_remain=$(bc   <<< "100*$balance/$allocate")
+          allocate=${allocate%.*}
+          PC_remain=0
+          [[ $allocate -gt 0 ]] &&
+            PC_remain=$(bc <<< "100*$balance/$allocate")
+
           balance=${balance%.*}
           act_proj+=( $proj_name:Bal=$balance)
           ACT_proj+=( $proj_name )
