@@ -5,10 +5,27 @@
 # 2.) Check Minimum Permissions (dwrx)
 # 3.) Write test
 
-## WRITE/READ test
-
-##TODO  STOCKYARD on all sys (including vista stockyard=work)
+# @TACC Nov. 18, 2026
+# cmds: df --type=lustre -P | uniq
+# cmds: findmnt -n -t lustre -o TARGET
+# 
+#              |-fstype nfs-----|  |-fstype lustre| |fstype beegfs|
+#  #             home    scratch      work
+#  #            $HOME   $SCRATCH      $WORK          $SCRATCH
+#  # Horizon    /home1  /scratch     nomount
+#  # Vista      /home1  /scratch     /work
+#  # Stampede   /home1  /scratch     /work2                      (/work->/work2)
+#  # Lonestar   /home1               /work           /scratch    (/work2->/work)
+# 
+# HZ:  /home  /home1             /scratch
+# VT:  /home  /home1             /scratch  /scratch2               /work  /work2
+# SP:  /home  /home1  /home1_S2  /scratch  /scratch2  /scratch_S2  /work  /work2
+# LS:  /home  /home1             /scratch                          /work  /work2
+#  
 ##TODO  What about aptainer and singularity
+## END @TACC
+
+## WRITE/READ test
 
   [[ $# == 0 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
   [[ $1 =~ t ]] && O=T 
@@ -66,13 +83,36 @@ if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
   for i in ${!USER_STORAGE_DIRS[@]}; do
       user_dir=${USER_STORAGE_DIRS[$i]}
       if [[ ! -z ${!user_dir} ]]; then
-         [[ $O == V ]] &&
-         printf "%-9s Variable  is defined.\n" $user_dir
-         found_pathnames+=(${!user_dir})
-         found_storage_dirs+=($user_dir)
-         found_storage_perms+=(${USER_STORAGE_PERMS[$i]})
-         found_storage_chmod+=(${USER_STORAGE_CHMOD[$i]})
-         defined+=($user_dir)
+        [[ $O == V ]] &&
+        printf "%-9s Variable  is defined" $user_dir
+        defined+=($user_dir)
+
+        # CHECK MOUNTS 
+        fs="/${user_dir,,}"   #lower case
+        found=no
+        [[ $user_dir == STOCKYARD ]] && fs=/work  #exception STOCKYARD (->/work)
+        for fstype in lustre nfs beegfs; do  
+          list=( $(findmnt -n -t $fstype -o TARGET) )
+          if [[ ${list[*]} =~ $fs ]]; then
+            found_pathnames+=(${!user_dir})
+            found_storage_dirs+=($user_dir)
+            found_storage_perms+=(${USER_STORAGE_PERMS[$i]})
+            found_storage_chmod+=(${USER_STORAGE_CHMOD[$i]})
+            found=yes
+          fi
+        done
+        if [[ $found == no ]]; then
+          [[ $O == V ]] &&
+            printf " and %10s mount NOT found.\n" $fs
+          STATUS=1
+          unmounted+=($fs)
+          var_unmounted+=($user_dir)
+        else
+          [[ $O == V ]] &&
+            printf " and %10s mount found.\n"  $fs
+          mounted+=($fs)
+        fi
+             
       else
          [[ $O == V ]] &&
          printf "%-9s Variable NOT defined.\n" $user_dir
@@ -83,6 +123,7 @@ if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
          undefined+=($user_dir)
       fi  
   done
+
 
   if [[ ${#found_storage_dirs[@]} == 0 ]]; then
     echo "None of the following User Storage Variables are defined:"
@@ -116,38 +157,48 @@ if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
     done
   fi
 
-  # test writing/reading from USER directories (that mount is correct)
-  if [[ ${#found_storage_dirs[@]} -gt 0 ]]; then
-    for i in ${!found_storage_dirs[@]}; do
-       user_dir=${found_storage_dirs[$i]}
-    done
+# # test writing/reading from USER directories (that mount is correct)
+# if [[ ${#found_storage_dirs[@]} -gt 0 ]]; then
+#   for i in ${!found_storage_dirs[@]}; do
+#      user_dir=${found_storage_dirs[$i]}
+#   done
 
-  fi
 
 # End of Checks, Print T (terse) message
 
-  if [[ ${#invalid[@]} -eq 0 ]] &&  [[ ${#undefined[@]} -eq 0 ]]; then
+  if [[ ${#invalid[@]} -eq 0 ]] &&  [[ ${#undefined[@]} -eq 0 ]] && [[ ${#unmounted[@]} -eq 0 ]]; then
       [[ $O == T ]] && 
         echo "FILE SYSTEMS: Defined and Accessible (${defined[@]})"
   fi
+
   [[ $O == N ]] && 
     echo "DEFINED VARIABLES: (${defined[@]})" &&
-    echo "USER PERMISSIONS OK drwx: (${valid[@]})"
+    echo "USER PERMISSIONS OK drwx: (${valid[@]})" &&
+    echo "MOUNT POINTS: (${mounted[@]}) "
 
-  if [[ ${#invalid[@]} -ne 0 ]] ||  [[ ${#undefined[@]} -ne 0 ]]; then
+  if [[ ${#invalid[@]} -ne 0 ]] ||  [[ ${#undefined[@]} -ne 0 ]] || [[ ${#unmounted[@]} -ne 0 ]]; then
     [[ $O == T ]] &&
-      echo "FILE SYSTEMS: Defined and Accessible (${defined[@]})"
+      echo "FILE SYSTEMS: Defined Variables (${defined[@]})"
 
     if [[ ${#undefined[@]} -gt 0 ]]; then
       echo "UNDEFINED VARS: ${undefined[@]}"
       echo "  Make sure your startup scripts have not unset this (these) variable(s)."
     fi
+
     if [[ ${#invalid[@]}   -gt 0 ]]; then
       for i in ${!invalid[@]}; do 
         echo "INCORRECT USER PERMISSIONS for ${invalid[$i]} found:expected ${found_expected[$i]}"
         echo "  Correct with \"${fix_perms[$i]}\""
       done
     fi
+
+    if [[ ${#unmounted[@]}   -gt 0 ]]; then
+      for i in ${!unmounted[@]}; do 
+        echo " NO MOUNT FOR ${var_unmounted[$i]} (${unmounted[$i]}) FOUND on `hostname`."
+        echo "  System Problem: Please submit an issue for mount problem."
+      done
+    fi
+
   fi
 
 fi
