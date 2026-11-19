@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Nov 19, 2026  When x=0, y/x result is give "0" as a value.
+
   [[ $# == 0 ]] && O=N    #Command line options T=terse,v=Verbose, default Normal
   [[ $1 =~ t ]] && O=T 
   [[ $1 =~ v ]] && O=V 
@@ -98,6 +100,9 @@
     S_used=${df_flds[2]}
     S_remain=${df_flds[3]}
     PS_used=${df_flds[4]%\%}
+
+    PS_remain=0
+    [[ $(echo "$S_total > 0" | bc) -eq 1 ]] &&
     PS_remain=$(bc <<< "100*$S_remain/$S_total")
     [[ $PS_remain -lt 6 ]] && LS_warn+=($PS_remain) LS_warn_fs+=(${df_space_flds[5]})
     [[ $PS_remain -lt 3 ]] && LS_fail+=($PS_remain) LS_fail_fs+=(${df_space_flds[5]})
@@ -108,6 +113,8 @@
     I_total=$(( I_used + I_remain ))
     
     PI_used=${df_flds[7]%\%} 
+    PI_remain=0
+    [[ $(echo "$I_total > 0" | bc) -eq 1 ]] &&
     PI_remain=$(bc <<< "100*$I_remain/$I_total")
     [[ $PI_remain -lt 6 ]] && LI_warn+=($PI_remain) LI_warn_fs+=(${df_space_flds[5]})
     [[ $PI_remain -lt 3 ]] && LI_fail+=($PI_remain) LI_fail_fs+=(${df_space_flds[5]})
@@ -144,8 +151,12 @@
     S_used=${df_space_flds[2]%\G}
     S_remain=${df_space_flds[3]%\G}
     
+    PS_used=0 PS_remain=0
+    [[ $(echo "$S_total > 0" | bc) -eq 1 ]] &&
     PS_used=$(bc   <<< "100*$S_used/$S_total")
+    [[ $(echo "$S_total > 0" | bc) -eq 1 ]] &&
     PS_remain=$(bc <<< "100*$S_remain/$S_total")
+
     [[ $PS_remain -lt 6 ]] && [[ $PS_remain -ge 3 ]] && HPCS_warn+=($PS_remain) HPCS_warn_fs+=(${df_space_flds[5]})
     [[ $PS_remain -lt 3 ]] &&                           HPCS_fail+=($PS_remain) HPCS_fail_fs+=(${df_space_flds[5]})
     
@@ -153,9 +164,13 @@
     I_total=${df_inode_flds[1]} 
     I_used=${df_inode_flds[2]} 
     I_remain=${df_inode_flds[3]} 
-    
+
+    PI_used=0 PI_remain=0
+    [[ $(echo "$I_total > 0" | bc) -eq 1 ]] &&
     PI_used=$(bc   <<< "100*$I_used/$I_total")
+    [[ $(echo "$I_total > 0" | bc) -eq 1 ]] &&
     PI_remain=$(bc <<< "100*$I_remain/$I_total")
+
     [[ $PI_remain -lt 6 ]] && [[ $PI_remain -ge 3 ]] && HPCI_warn+=($PI_remain) HPCI_warn_fs+=(${df_space_flds[5]})
     [[ $PI_remain -lt 3 ]] &&                           HPCI_fail+=($PI_remain) HPCI_fail_fs+=(${df_space_flds[5]})
     
@@ -207,8 +222,12 @@
       S_used=$( bc <<< "${common_out[1]}/1048576")
       S_remain=$(( S_total - S_used ))
 
+      PS_used=0 PS_remain=0
+      [[ $(echo "$S_total > 0" | bc) -eq 1 ]] &&
       PS_used=$(bc   <<< "100*$S_used/$S_total")
+      [[ $(echo "$S_total > 0" | bc) -eq 1 ]] &&
       PS_remain=$(bc <<< "100*$S_remain/$S_total")
+
       [[ $PS_remain -lt 6 ]] && [[ $PS_remain -ge 3 ]] && HPCS_warn+=($PS_remain) HPCS_warn_fs+=($fs)
       [[ $PS_remain -lt 3 ]] &&                           HPCS_fail+=($PS_remain) HPCS_fail_fs+=($fs)
   
@@ -218,8 +237,12 @@
       I_used=$(   bc <<< "scale=2; ${common_out[5]}/1000000")
       I_remain=$( bc <<< "scale=2; $I_remain/1000000")
   
+      PI_used=0 PI_remain=0
+      [[ $(echo "$I_total > 0" | bc) -eq 1 ]] &&
       PI_used=$(bc   <<< "100*$I_used/$I_total")
+      [[ $(echo "$I_total > 0" | bc) -eq 1 ]] &&
       PI_remain=$(bc <<< "100*$I_remain/$I_total")
+
       [[ $PI_remain -lt 6 ]] &&  [[ $PI_remain -ge 3 ]] && HPCI_warn+=($PI_remain) HPCI_warn_fs+=($fs)
       [[ $PI_remain -lt 3 ]] &&                            HPCI_fail+=($PI_remain) HPCI_fail_fs+=($fs)
 
