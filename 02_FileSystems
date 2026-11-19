@@ -173,8 +173,8 @@ if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
 
   [[ $O == N ]] && 
     echo "DEFINED VARIABLES: (${defined[@]})" &&
-    echo "USER PERMISSIONS OK drwx: (${valid[@]})" &&
-    echo "MOUNT POINTS: (${mounted[@]}) "
+    echo "USER PERMISSIONS:  (${valid[@]})  OK drwx" &&
+    echo "MOUNT POINTS:      (${mounted[@]}) "
 
   if [[ ${#invalid[@]} -ne 0 ]] ||  [[ ${#undefined[@]} -ne 0 ]] || [[ ${#unmounted[@]} -ne 0 ]]; then
     [[ $O == T ]] &&
@@ -193,9 +193,11 @@ if [[ $AT_TACC == yes ]] || [[ $OS == darwin ]]; then
     fi
 
     if [[ ${#unmounted[@]}   -gt 0 ]]; then
+      login_name=`hostname`
+      login_name=${login_name%.tacc.utexas.edu}
       for i in ${!unmounted[@]}; do 
-        echo " NO MOUNT FOR ${var_unmounted[$i]} (${unmounted[$i]}) FOUND on `hostname`."
-        echo "  System Problem: Please submit an issue for mount problem."
+        echo "NO MOUNT FOR ${var_unmounted[$i]} (${unmounted[$i]}) FOUND on $login_name."
+        echo " System Problem: Please submit an issue for mount problem."
       done
     fi
 

@@ -85,7 +85,8 @@ for family in ${compiler_families[@]}; do
     flat_set="${set[@]}"
   if [[ ${#found[@]} == 0 ]]; then
      if [[ $O == V ]]; then
-       printf "%-6s family NOT AVAILABLE $module_clause.\n" $family
+      #printf "%-6s family NOT AVAILABLE $module_clause.\n" $family
+       printf "%-6s family NOT AVAILABLE %s.\n" $family "$module_clause"
        [[ $family == gcc ]] && printf "      family is required!\n"  && STATUS=1
      fi
      [[ $family == gcc ]] && found_gcc_family=no
@@ -93,7 +94,8 @@ for family in ${compiler_families[@]}; do
 
   if [[ ${#found[@]} == 1 ]] || [[ ${#found[@]} == 2 ]]; then
      if [[ $O == N ]] || [[ $O == V ]]; then
-       printf "%-6s family SUBSET AVAILABLE $module_clause (%s).\n"  $family  "$flat_found"
+      #printf "%-6s family SUBSET AVAILABLE $module_clause (%s).\n"  $family  "$flat_found"
+       printf "%-6s family SUBSET AVAILABLE %s (%s).\n"  $family "$module_clause" "$flat_found"
        [[ $family == gcc ]] && printf "       Complete family is required!\n" "$flat_set"  && STATUS=1
      fi
      [[ $family == gcc ]] && found_gcc_subset=yes && gcc_subset=($flat_found)
@@ -102,7 +104,8 @@ for family in ${compiler_families[@]}; do
 
   if [[ ${#found[@]} == 3 ]] || [[ ${#found[@]} == 1 ]]; then
      if [[ $O == N ]] || [[ $O == V ]]; then
-       printf '%-6s family $module_clause (%s).\n' $family  "$flat_found"
+      #printf '%-6s family $module_clause (%s).\n' $family  "$flat_found"
+       printf '%-6s family %s (%s).\n' $family "$module_clause" "$flat_found"
      fi
      found_all_3+=("${family}: $flat_found") 
   fi
