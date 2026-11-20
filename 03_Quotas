@@ -232,6 +232,7 @@
       [[ $PS_remain -lt 3 ]] &&                           HPCS_fail+=($PS_remain) HPCS_fail_fs+=($fs)
   
       #Inode info
+if [[ ${common_out[7]} -ne 0 ]]; then
       I_remain=$(( ${common_out[7]} - ${common_out[5]} ))
       I_total=$(  bc <<< "scale=2; ${common_out[7]}/1000000")
       I_used=$(   bc <<< "scale=2; ${common_out[5]}/1000000")
@@ -253,6 +254,15 @@
               ${I_used} ${I_total} ${PI_used}
 
       [[ $O == T ]] && T_out+=("$fs ${PS_remain}% ")
+else
+      I_used=$(   bc <<< "scale=2; ${common_out[5]}/1000000")
+      [[ $O == N ]] || [[ $O == V ]] &&
+      printf "%-${NAME_sp}s %6s     %6s     %6s     %6s    %6s    %6s\n" \
+              $fs \
+              ${S_used} ${S_total} ${PS_used} \
+              ${I_used} "--" "--"
+      [[ $O == T ]] && T_out+=("$fs unlimited ")
+fi
 
   done
 
@@ -260,7 +270,7 @@
 # Print Check Info
 
   [[ $O == T ]] &&
-    echo "FILESYSTEM QUOTAS: (${T_out[@]}  %remaining)"
+    echo "FILESYSTEM QUOTAS: (${T_out[@]}  [%remaining])"
 
   #WARN
   if [[ ${#LS_warn[@]} -ne 0 ]]; then
