@@ -17,7 +17,7 @@
 # 
 # END COMMENTS -- Do Not Remove, Alter or Duplicate
 #-----
-[[ $1 =~ version ]] && echo " -> $(basename $0) VERSION = 4.1.1" && exit 0
+[[ $1 =~ version ]] && echo " -> $(basename $0) VERSION = 4.1.3" && exit 0
 
 USAGE=" $(basename $0) [-t|-v|-h|--version]  # terse|verbose|help|version" 
 
